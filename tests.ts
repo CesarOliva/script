@@ -1,36 +1,66 @@
-import { Lexer } from "./lexer";
+import { Lexer } from "./lexer"; // Ajusta ruta
+import { Parser } from "./parser"; // Ajusta ruta
 
-const validCode = `
-int A=5;
-int B=10;
+function testCompiler(testName: string, source: string) {
+  console.log(`\n==================================================`);
+  console.log(` RUNNING TEST: ${testName}`);
+  console.log(`==================================================`);
 
-if(A=B){
-  print("Iguales");
-}
-`
-
-const invalidCode = `
-while(A=B@){
-  print("Iguales");
-}
-`
-
-function runLexerTest(testName: string, source: string) {
+  try {
+    // 1. Fase Léxica
     const lexer = new Lexer(source);
     const tokens = lexer.scanTokens();
 
-    console.table(
-      tokens.map((token, index) => ({
-        "#": index + 1,
-        Type: token.type,
-        Value: token.value,
-        Literal: token.literal ?? "",
-        Line: token.line,
-        Column: token.column
-      })
-    )
-  );
+    const lexicalErrors = tokens.filter((t) => t.type === ("ERROR" as any));
+    if (lexicalErrors.length > 0) {
+      console.error("❌ ERRORES LÉXICOS DETECTADOS:");
+      console.table(lexicalErrors);
+      return;
+    }
+
+    // 2. Fase Sintáctica
+    const parser = new Parser(tokens);
+    const ast = parser.parse();
+
+    console.log("✅ ÁRBOLES DE SINTAXIS ABSTRACTA (AST) GENERADO EXITOSAMENTE:");
+    console.log(JSON.stringify(ast, null, 2));
+  } catch (error: any) {
+    console.error("❌ " + error.message);
+  }
 }
 
-runLexerTest("Caso Valido", validCode);
-runLexerTest("Caso con Errores léxicos", invalidCode);
+// Ejemplo 1: Caso Totalmente Válido
+const validCode = `
+program TestValido {
+  int A = 5;
+  int B = 8;
+  
+  if (A == B) {
+    print("Iguales");
+  } else {
+    print("Diferentes");
+  }
+}
+`;
+
+// Ejemplo 2: Error Léxico
+const lexicalErrorCode = `
+program TestErrorLexico {
+  int A = 5 @;
+}
+`;
+
+// Ejemplo 3: Error Sintáctico (while no pertenece a la gramática EBNF o falta ';' )
+const syntaxErrorCode = `
+program TestErrorSintactico {
+  int A = 5
+  while (A == 5) {
+    print("Error");
+  }
+}
+`;
+
+// Ejecución
+testCompiler("Caso 1: Programa Válido", validCode);
+testCompiler("Caso 2: Error Léxico (@)", lexicalErrorCode);
+testCompiler("Caso 3: Error Sintáctico ('while' / falta ';')", syntaxErrorCode);
