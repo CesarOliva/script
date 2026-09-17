@@ -46,7 +46,7 @@ program TestValido {
 // Ejemplo 2: Error Léxico
 const lexicalErrorCode = `
 program TestErrorLexico {
-  int A = 5 @;
+  bool result = true;
 }
 `;
 

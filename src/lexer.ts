@@ -4,7 +4,7 @@ export enum TokenType{
 
     int = "int",
     float = "float",
-    boolean = "boolean",
+    boolean = "bool",
     string = "string",
     // stack = "stack",
     // queue = "queue",
@@ -80,7 +80,7 @@ export class Lexer {
         
         ["int", TokenType.int],
         ["float", TokenType.float],
-        ["boolean", TokenType.boolean],
+        ["bool", TokenType.boolean],
         ["string", TokenType.string],
         // ["stack", TokenType.stack],
         // ["queue", TokenType.queue],
