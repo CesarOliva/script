@@ -1,6 +1,6 @@
 export enum TokenType{
     // Palabras reservadas
-    // program = "program",
+    program = "program",
 
     int = "int",
     float = "float",
@@ -30,7 +30,7 @@ export enum TokenType{
     plus = "plus",
     minus = "minus",
     multiply = "multiply",
-    // module = "module",
+    module = "module",
     divide = "divide",
     equal_equal = "equal_equal",
     not_equal = "not_equal",
@@ -76,7 +76,7 @@ export class Lexer {
     private startColumn = 1;
 
     private static keywords: Map<string, TokenType> = new Map([
-        // ["program", TokenType.program],
+        ["program", TokenType.program],
         
         ["int", TokenType.int],
         ["float", TokenType.float],
@@ -148,7 +148,7 @@ export class Lexer {
             case "+": this.addToken(TokenType.plus); break
             case "-": this.addToken(TokenType.minus); break
             case "*": this.addToken(TokenType.multiply); break
-            // case "%": this.addToken(TokenType.module); break
+            case "%": this.addToken(TokenType.module); break
 
             case "=":
                 this.addToken(this.match("=") ? TokenType.equal_equal : TokenType.assign);
