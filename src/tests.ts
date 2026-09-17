@@ -46,14 +46,13 @@ program TestValido {
 // Ejemplo 2: Error Léxico
 const lexicalErrorCode = `
 program TestErrorLexico {
-  bool result = true;
+  int A = 5 @;
 }
 `;
 
-// Ejemplo 3: Error Sintáctico (while no pertenece a la gramática EBNF o falta ';' )
 const syntaxErrorCode = `
 program TestErrorSintactico {
-  int A = 5
+  int A = 5;
   while (A == 5) {
     print("Error");
   }

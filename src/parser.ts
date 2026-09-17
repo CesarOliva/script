@@ -52,6 +52,10 @@ export class Parser {
             return this.forStatement();
         }
 
+        if (this.match(TokenType.while)) {
+            return this.whileStatement();
+        }
+
         if (this.match(TokenType.print)) {
             return this.printStatement();
         }
@@ -174,6 +178,21 @@ export class Parser {
             init,
             condition,
             update,
+            body
+        }
+    }
+
+    // whileStatement ::= "while", "(", condition, ")"
+    private whileStatement(): AST.WhileStatementNode {
+        this.consume(TokenType.leftParen, "Se esperaba '(' despues de 'while'");
+        const condition = this.expression();
+        this.consume(TokenType.rightParen, "Se esperaba ')' despues de la condición");
+
+        const body = this.block();
+
+        return {
+            type: "WhileStatement",
+            condition,
             body
         }
     }

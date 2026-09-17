@@ -140,7 +140,6 @@ Source Code
 
 ### Known spec ↔ implementation gaps
 
-- Spec uses `bool`; implementation uses `boolean` keyword (`src/lexer.ts:82-83`).
 - `stack` / `queue` keywords are commented out in the lexer; no array/comma/dot support yet (`src/lexer.ts:9-10,143-145`).
 - `while` is intentionally out of scope and correctly rejected by the parser (covered by test case 3).
 - Error messages are in Spanish with line/column info.
@@ -148,10 +147,9 @@ Source Code
 ## Roadmap
 
 1. Complete parser coverage: arrays, `stack<T>` / `queue<T>`, method calls (`push`, `pop`, `enqueue`, ...).
-2. Align `bool` vs `boolean` naming between spec and implementation.
-3. Semantic analyzer (symbol table + scopes + type checking).
-4. IR generation → optimizer → JS code generation.
-5. Real CLI (`compiler program.lang → program.js`) + automated test suite.
+2. Semantic analyzer (symbol table + scopes + type checking).
+3. IR generation → optimizer → JS code generation.
+4. Real CLI (`compiler program.lang → program.js`) + automated test suite.
 
 ## Documentation
 

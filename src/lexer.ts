@@ -71,7 +71,7 @@ export class Lexer {
     private tokens: Token[] = [];
     private start = 0;
     private current = 0;
-    private line = 1;
+    private line = 0;
     private column = 1;
     private startColumn = 1;
 
