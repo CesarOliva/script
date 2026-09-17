@@ -2,9 +2,9 @@
   "name": "pyscript",
   "version": "1.0.0",
   "description": "",
-  "main": "tests.ts",
+  "main": "src/tests.ts",
   "scripts": {
-    "test": "ts-node tests.ts"
+    "test": "ts-node src/tests.ts"
   },
   "keywords": [],
   "author": "",
