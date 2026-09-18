@@ -52,7 +52,7 @@ program TestErrorLexico {
 
 const syntaxErrorCode = `
 program StackTest {
-  stack<int> numbers;
+  sstack<int> numbers;
   numbers.push(10);
   
   while (numbers.size() > 0) {
@@ -64,4 +64,4 @@ program StackTest {
 // Ejecución
 testCompiler("Caso 1: Programa Válido", validCode);
 testCompiler("Caso 2: Error Léxico (@)", lexicalErrorCode);
-testCompiler("Caso 3: Error Sintáctico ('while' / falta ';')", syntaxErrorCode);
+testCompiler("Caso 3: Programa Válido. Actualizado con while y tipos de datos", syntaxErrorCode);
