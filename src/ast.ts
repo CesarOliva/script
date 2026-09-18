@@ -77,7 +77,8 @@ export type ExpressionNode =
     | BinaryExpressionNode 
     | UnaryExpressionNode
     | LiteralNode 
-    | IdentifierNode;
+    | IdentifierNode
+    | MethodCallNode;
 
 export interface BinaryExpressionNode {
     type: "BinaryExpression";
@@ -101,4 +102,11 @@ export interface LiteralNode {
 export interface IdentifierNode {
     type: "Identifier";
     name: string;
+}
+
+export interface MethodCallNode {
+    type: "MethodCall";
+    object: string;
+    method: string;
+    args: ExpressionNode[];
 }

@@ -36,7 +36,14 @@ export class Parser {
 
     // statement ::= variableDeclaration | ifStatement | printStatement
     private statement(): AST.StatementNode {
-        if (this.match(TokenType.int, TokenType.float, TokenType.boolean, TokenType.string)){
+        if (this.match(
+            TokenType.int, 
+            TokenType.float, 
+            TokenType.boolean, 
+            TokenType.string,
+            TokenType.stack,
+            TokenType.queue
+        )){
             return this.variableDeclaration();
         }
 
@@ -75,6 +82,19 @@ export class Parser {
     // variableDeclaration ::= dataType IDENTIFIER "=" expression ";"
     private variableDeclaration(): AST.VariableDeclarationNode {
         const typeToken = this.previous();
+        let fullType = typeToken.value;
+
+        if (typeToken.type === TokenType.stack || typeToken.type === TokenType.queue) {
+            this.consume(TokenType.less_than, "Se esperaba '<' tras la declaración del tipo de estructura.");
+            const innerType = this.consumeAny(
+                [TokenType.int, TokenType.float, TokenType.string, TokenType.boolean],
+                "Se esperaba un tipo primitivo dentro de '< >'"
+            )
+            this.consume(TokenType.greater_than, "Se esperaba '>' al cerrar el tipo parametrizado.");
+
+            fullType = `${typeToken.value}<${innerType.value}>`;
+        }
+
         const nameToken = this.consume(TokenType.identifier, "Se esperaba el nombre de la variable");
         let initializer: AST.ExpressionNode | undefined;
 
@@ -86,7 +106,7 @@ export class Parser {
 
         return { 
             type: "VariableDeclaration", 
-            varType: typeToken.value, 
+            varType: fullType, 
             name: nameToken.value, 
             initializer
         }
@@ -383,9 +403,32 @@ export class Parser {
         }
 
         if(this.match(TokenType.identifier)) {
+            const name = this.previous().value;
+
+            if (this.match(TokenType.dot)) {
+                const methodToken = this.consume(TokenType.identifier, "Se esperaba el nombre del método tras '.'");
+                this.consume(TokenType.leftParen, "Se esparaba '(' tras el nombre del método")
+
+                const args: AST.ExpressionNode[] = [];
+                if(!this.check(TokenType.rightParen)) {
+                    do {
+                        args.push(this.expression());
+                    } while (this.match(TokenType.comma));
+                }
+
+                this.consume(TokenType.rightParen, "Se esperaba ')' tras los argumentos del método")
+
+                return {
+                    type: "MethodCall",
+                    object: name,
+                    method: methodToken.value,
+                    args
+                }
+            }
+
             return {
                 type: "Identifier",
-                name: this.previous().value
+                name
             }
         }
 

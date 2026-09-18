@@ -51,10 +51,12 @@ program TestErrorLexico {
 `;
 
 const syntaxErrorCode = `
-program TestErrorSintactico {
-  int A = 5;
-  while (A == 5) {
-    print("Error");
+program StackTest {
+  stack<int> numbers;
+  numbers.push(10);
+  
+  while (numbers.size() > 0) {
+    print(numbers.pop());
   }
 }
 `;

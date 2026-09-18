@@ -6,8 +6,8 @@ export enum TokenType{
     float = "float",
     boolean = "bool",
     string = "string",
-    // stack = "stack",
-    // queue = "queue",
+    stack = "stack",
+    queue = "queue",
 
     if = "if",
     else = "else",
@@ -44,8 +44,8 @@ export enum TokenType{
 
     // Delimitadores
     semicolon = "semicolon",
-    // comma = "comma",
-    // dot = "dot",
+    comma = "comma",
+    dot = "dot",
     leftParen = "leftParen",
     rightParen = "rightParen",
     leftBrace = "leftBrace",
@@ -82,8 +82,8 @@ export class Lexer {
         ["float", TokenType.float],
         ["bool", TokenType.boolean],
         ["string", TokenType.string],
-        // ["stack", TokenType.stack],
-        // ["queue", TokenType.queue],
+        ["stack", TokenType.stack],
+        ["queue", TokenType.queue],
 
         ["if", TokenType.if],
         ["else", TokenType.else],
@@ -141,8 +141,8 @@ export class Lexer {
             case "[": this.addToken(TokenType.leftBracket); break
             case "]": this.addToken(TokenType.rightBracket); break
             case ";": this.addToken(TokenType.semicolon); break
-            // case ",": this.addToken(TokenType.comma); break
-            // case ".": this.addToken(TokenType.dot); break
+            case ",": this.addToken(TokenType.comma); break
+            case ".": this.addToken(TokenType.dot); break
 
             // Operadores
             case "+": this.addToken(TokenType.plus); break
