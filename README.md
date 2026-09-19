@@ -26,7 +26,7 @@ program Main {
 }
 ```
 
-Newly supported (see `src/tests.ts` case 3):
+Newly supported stacks/queues (see `src/tests.ts` case 3):
 
 ```text
 program StackTest {
@@ -36,6 +36,20 @@ program StackTest {
     while (numbers.size() > 0) {
         print(numbers.pop());
     }
+}
+```
+
+Newly supported arrays (see `src/tests.ts` case 1):
+
+```text
+program ArrayDemo {
+    int[] numbers = [10, 20, 30];
+
+    int first = numbers[0];
+
+    numbers[1] = 50;
+
+    print(numbers[1]);
 }
 ```
 
@@ -65,8 +79,11 @@ script/
 - **Program shape:** `program Identifier { statements }`
 - **Primitive types:** `int`, `float`, `bool`, `string`
 - **Structured types (implemented):** parametrized `stack<T>` and `queue<T>` where `T` is a primitive type (`stack<int> numbers;`, `queue<string> names;`)
-- **Declarations:** `int x = 10;`, `int x;`, `const int MAX = 100;`, `stack<int> s;`
-- **Assignment:** `x = expr;`
+- **Array types (implemented):** `T[]` where `T` is a primitive type (`int[] numbers = [10, 20, 30];`, `string[] names;`)
+- **Array literals (implemented):** `[expr, expr, ...]`, including empty `[]` — e.g. `[10, 20, 30]`, `[true, false]`
+- **Index access (implemented):** `array[index]` as an expression — e.g. `int first = numbers[0];`, `print(numbers[1]);`
+- **Declarations:** `int x = 10;`, `int x;`, `const int MAX = 100;`, `stack<int> s;`, `int[] arr = [1, 2];`
+- **Assignment:** `x = expr;` and indexed assignment `arr[i] = expr;` (e.g. `numbers[1] = 50;` → `Assignment { target, index, value }`)
 - **Control flow:** `if / else` (with `else if` via nesting), C-style `for (init; cond; update)`, `while (cond) { ... }`
 - **I/O:** `read(variable);`, `print(expression);`
 - **Method calls (for `stack`/`queue`):** `obj.method(args)` with comma-separated args — e.g. `numbers.push(10);`, `numbers.pop()`, `numbers.size()`, `q.enqueue(1);`, `q.dequeue()`
@@ -75,7 +92,7 @@ script/
 - **Comments:** single-line `//` only
 - **Statement terminator:** `;` (blocks don't need it; method calls used as statements need `;` via `ExpressionStatement`)
 
-Out of scope for v0.1: user-defined functions, `do-while`, classes, modules, type inference, array literals/indexing (`int[]`, `[true, false]`).
+Out of scope for v0.1: user-defined functions, `do-while`, classes, modules, type inference.
 
 Full details: `documentation/1-Especificacion_LenguajeDeProgramacion.md`.
 
@@ -100,7 +117,7 @@ npm test
 
 This executes `src/tests.ts` via `ts-node` and covers:
 
-1. Valid program → prints generated AST.
+1. Valid `ArrayDemo` program → prints generated AST with `VariableDeclaration(varType: "int[]")`, `ArrayLiteral`, `IndexAccess` (`int first = numbers[0];`), indexed `Assignment` (`numbers[1] = 50;` → `Assignment { target, index, value }`), and `print(numbers[1]);`.
 2. Lexical error (`@`) → reports `ERROR` tokens.
 3. Valid `stack<int>` + `while` + method-call program (`StackTest`: `stack<int> numbers; numbers.push(10); while (numbers.size() > 0) { print(numbers.pop()); }`) → prints AST with `VariableDeclaration(varType: "stack<int>")`, `MethodCall`, and `WhileStatement` nodes.
 
@@ -116,7 +133,7 @@ Source Code
          │ Token[]
          ▼
 ┌──────────────────┐
-│ Syntax Analyzer  │  src/parser.ts + src/ast.ts — partially implemented
+│ Syntax Analyzer  │  src/parser.ts + src/ast.ts — implemented
 └────────┬─────────┘
          │ AST
          ▼
@@ -140,20 +157,29 @@ Source Code
 
 ## Current status
 
-> This section is maintained as the project evolves. Last updated: 2026-09-18.
+> This section is maintained as the project evolves. Last updated: 2026-09-19.
 
 | Phase | Status | Notes |
 |---|---|---|
 | 1. Language / lexical / syntactic spec | ✅ Done | v0.1 specs in `documentation/` (language, lexical, EBNF syntax). Spec already defines `bool`, `while`, `stack<T>` / `queue<T>`, and method calls |
-| 2. Lexer (`src/lexer.ts`) | ✅ Implemented | Keywords `program int float bool string stack queue if else for while const print read true false`, identifiers, int/float/bool/string literals, operators (`+ - * / % = == != < <= > >= && \|\| !`), delimiters `() {} [] ; , .`, `//` comments, `EOF`, line/column tracking, `ERROR` recovery tokens |
-| 3. Parser + AST (`src/parser.ts`, `src/ast.ts`) | 🟡 Partial | Recursive descent. Supports: `program`, var/const declarations (incl. parametrized `stack<T>` / `queue<T>` with primitive `T`), assignment, `if/else`, `for`, `while`, `print`/`read`, method calls `obj.method(arg, ...)` → `MethodCall` node (`object`, `method`, `args`), expression statements, full expression precedence. **Not yet:** arrays (`[]` literals/indexing, `int[]`),
-| 4. Semantic analyzer | ⬜ Not started | Symbol table, scopes, type checking (incl. `stack`/`queue` element-type checks, `bool` conditions) |
+| 2. Lexer (`src/lexer.ts`) | ✅ Implemented | Keywords `program int float bool string stack queue if else for while const print read true false`, identifiers, int/float/bool/string literals, operators (`+ - * / % = == != < <= > >= && \|\| !`), delimiters `() {} [] ; , .`, `//` comments, `EOF`, line/column tracking, `ERROR` recovery tokens. `[` / `]` already emitted, reused for arrays |
+| 3. Parser + AST (`src/parser.ts`, `src/ast.ts`) | ✅ Implemented | Recursive descent. Supports: `program`, var/const declarations (incl. parametrized `stack<T>` / `queue<T>` with primitive `T`, and array types `T[]` with primitive `T`), simple + indexed assignment (`x = e;`, `arr[i] = e;`), `if/else`, `for`, `while`, `print`/`read`, array literals (`[e, ...]` → `ArrayLiteral { elements }`), index access (`a[i]` → `IndexAccess { array, index }`), method calls `obj.method(arg, ...)` → `MethodCall` node (`object`, `method`, `args`), expression statements, full expression precedence. **Out of scope (will not be implemented):** multi-dimensional arrays, `const` of structured/array type, structured types in `for`-init |
+| 4. Semantic analyzer | ⬜ Not started | Symbol table, scopes, type checking (incl. `stack`/`queue` element-type checks, array element-type + index-type checks, `bool` conditions) |
 | 5. Intermediate code | ⬜ Not started | Three-address code with temporals/labels |
 | 6. Optimizer | ⬜ Not started | Constant folding/propagation, DCE (planned) |
 | 7. JS code generator | ⬜ Not started |  |
 | 8. CLI + test suite | 🟡 Partial | Only `npm test` harness (`src/tests.ts`) with 3 manual cases (2 valid + 1 lexical error); no CLI yet |
 
-### Implemented since the previous README update (2026-09-17)
+### Implemented since the previous README update (2026-09-18 → 2026-09-19, commit `51fa403` — array datatype)
+
+- **Array type declarations** (`src/parser.ts:93-97`): `T[]` where `T` is a primitive (`int`, `float`, `bool`, `string`) — parses optional `[` `]` after the base type and stores `varType: "int[]"` (e.g. `int[] numbers = [10, 20, 30];`).
+- **Array literals** (`src/ast.ts:83,117-120`, `src/parser.ts:416-431` in `primary()`): `[expr, ...]` with zero or more comma-separated `expression()` elements, including empty `[]` → `ArrayLiteral { elements }`.
+- **Index access expressions** (`src/ast.ts:84,122-126`, `src/parser.ts:451-460` in `primary()`): `identifier[expression]` → `IndexAccess { array, index }`, usable anywhere an expression is expected (e.g. `int first = numbers[0];`, `print(numbers[1]);`).
+- **Indexed assignment** (`src/ast.ts:65-70`, `src/parser.ts:259-278`): `identifier[expression] = expression;` → `Assignment { target, index, value }` (e.g. `numbers[1] = 50;`). `statement()` disambiguation extended (`src/parser.ts:78-83`) so `identifier [` routes to `assignmentStatement()` instead of `expressionStatement()`.
+- **`src/tests.ts` harness update:** case 1 rewritten from `TestValido` (if/else) to `ArrayDemo` covering declare + literal + index read + indexed write + print; case 3 typo fixed (`sstack<int>` → `stack<int>`).
+- **Minor typo fixes in parser errors** (`src/parser.ts:281,465`): `"Se esparaba"` → `"Se esperaba"`.
+
+### Implemented in the previous update (2026-09-17 → 2026-09-18)
 
 - **`while` loop** (`src/parser.ts:62-64,206-218`, `src/ast.ts:14,49-53`): `while (cond) { ... }` with expression condition + block body → `WhileStatement { condition, body }`.
 - **`stack` / `queue` keywords** (`src/lexer.ts:9-10,85-86`): previously commented out, now active (`stack`, `queue`).
@@ -162,17 +188,19 @@ Source Code
 - **`MethodCall` expressions** (`src/ast.ts:81,107-112`, `src/parser.ts:405-433`): `identifier.identifier(args)` in `primary()` — zero or more comma-separated `expression()` args, e.g. `numbers.push(10)`, `numbers.size()`, `numbers.pop()`. Usable as a statement via `ExpressionStatement` (`numbers.push(10);`).
 - **`bool` keyword alignment:** type keyword is `bool` (`TokenType.boolean = "bool"`, `src/lexer.ts:7,83`); `true`/`false` produce `booleanLiteral` tokens.
 
-### Known spec ↔ implementation gaps
+### Known limitations / out of scope (will not be implemented)
 
-- No array support yet: `int[]`, `[ ... ]` literals, and indexing have no parser production (spec documents them; lexer only emits `[` / `]`).
+- Multi-dimensional arrays (`int[][]`): `variableDeclaration()` only consumes a single `[` `]` pair. Fuera de alcance por decisión de diseño.
+- `const` only accepts primitive types: `constantDeclaration()` does not allow `T[]` or `stack<T>` / `queue<T>`. Fuera de alcance por decisión de diseño.
+- `for`-init only accepts primitive declarations or assignments: `stack<T>` / `queue<T>` / `T[]` declarations and indexed assignments are not handled in the `for (init; ...)` header (the `update` clause also only handles simple `x = e` assignments, not `arr[i] = e`). Fuera de alcance por decisión de diseño.
+- Index access is only single-level and identifier-rooted (`name[expr]`); chained access such as `a[0][1]` parses `a[0]` but leaves a trailing `[1]` unconsumed (consecuencia de no soportar arreglos multidimensionales).
 
 
 ## Roadmap
 
-1. Complete parser coverage: arrays (`int[]`, literals, indexing).
-2. Semantic analyzer (symbol table + scopes + type checking, incl. `stack`/`queue` generics and `bool` conditions).
-3. IR generation → optimizer → JS code generation.
-4. Real CLI (`compiler program.lang → program.js`) + automated test suite (rename/fix case-3 label in `src/tests.ts:67`).
+1. Semantic analyzer (symbol table + scopes + type checking, incl. `stack`/`queue` generics, array element/index types, and `bool` conditions).
+2. IR generation → optimizer → JS code generation.
+3. Real CLI (`compiler program.lang → program.js`) + automated test suite.
 
 ## Documentation
 
