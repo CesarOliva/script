@@ -125,10 +125,22 @@ export class SemanticAnalyzer {
         }
 
         this.symbolTable.enterScope();
-        for(const stmt of node.thenBranch) {
+        for (const stmt of node.thenBranch) {
             this.visitStatement(stmt);
         }
         this.symbolTable.exitScope();
+
+        if (node.elseBranch) {
+            if (Array.isArray(node.elseBranch)) {
+                this.symbolTable.enterScope();
+                for (const stmt of node.thenBranch) {
+                    this.visitStatement(stmt);
+                }
+                this.symbolTable.exitScope();
+            } else {
+                this.visitIfStatement(node.elseBranch as AST.IfStatementNode);
+            }
+        }
     }
 
     private visitForStatement(node: AST.ForStatementNode): void {
@@ -368,7 +380,7 @@ export class SemanticAnalyzer {
 
             if(node.method === 'pop' || node.method === 'peek') return innerType;
 
-            if(node.method === 'isEmpyt') return 'bool';
+            if(node.method === 'isEmpty') return 'bool';
 
             if(node.method === 'size') return 'int';
 
@@ -412,7 +424,8 @@ export class SemanticAnalyzer {
         this.errors.push({
             message: `La variable '${node.object}' (${symbol.type}) no soporta la invocación de métodos`
         })
-        return undefined
+
+        return undefined;
     }
 
     public getSymbolTable(): SymbolTable {

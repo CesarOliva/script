@@ -58,17 +58,21 @@ program ArrayDemo {
 ```text
 script/
 ├── src/
-│   ├── lexer.ts    # Lexical analyzer (scanner → Token[])
-│   ├── ast.ts      # AST node type definitions
-│   ├── parser.ts   # Recursive-descent parser (Token[] → AST)
-│   └── tests.ts    # Manual end-to-end tests (lexer + parser)
+│   ├── lexer.ts             # Lexical analyzer (scanner → Token[])
+│   ├── ast.ts               # AST node type definitions
+│   ├── parser.ts            # Recursive-descent parser (Token[] → AST)
+│   ├── symbolTable.ts       # Symbol table with nested scopes (stack of maps)
+│   ├── semanticAnalyzer.ts  # Semantic analyzer (AST → type/scope checks + errors)
+│   └── tests.ts             # End-to-end tests (lexer + parser + semantic)
 ├── documentation/
 │   ├── 1-Especificacion_LenguajeDeProgramacion.md  # Language spec v0.1
 │   ├── 2-Especificacion_Lexica_Formal.md           # Lexical spec v0.1
 │   ├── 3-Especificacion_Sintactica_Formal.md       # Syntactic spec (EBNF) v0.1
 │   ├── LexerExp.md    # Lexer implementation notes
 │   ├── ParserExp.md   # Parser implementation notes
-│   └── ASTExp.md      # AST notes
+│   ├── ASTExp.md      # AST notes
+│   ├── SymbolTableExp.md      # Symbol table implementation notes
+│   └── SemanticAnalyzerExp.md # Semantic analyzer implementation notes
 ├── package.json
 ├── tsconfig.json
 └── README.md
@@ -109,17 +113,24 @@ npm install
 
 ## Usage
 
-Run the manual test harness (lexer + parser → AST as JSON):
+Run the end-to-end test harness (lexer + parser + semantic analyzer):
 
 ```powershell
 npm test
 ```
 
-This executes `src/tests.ts` via `ts-node` and covers:
+This executes `src/tests.ts` via `ts-node` through the `runSemanticTest()` pipeline
+(`Lexer.scanTokens()` → `Parser.parse()` → `SemanticAnalyzer.analyze()`) and covers:
 
-1. Valid `ArrayDemo` program → prints generated AST with `VariableDeclaration(varType: "int[]")`, `ArrayLiteral`, `IndexAccess` (`int first = numbers[0];`), indexed `Assignment` (`numbers[1] = 50;` → `Assignment { target, index, value }`), and `print(numbers[1]);`.
-2. Lexical error (`@`) → reports `ERROR` tokens.
-3. Valid `stack<int>` + `while` + method-call program (`StackTest`: `stack<int> numbers; numbers.push(10); while (numbers.size() > 0) { print(numbers.pop()); }`) → prints AST with `VariableDeclaration(varType: "stack<int>")`, `MethodCall`, and `WhileStatement` nodes.
+1. Valid `TestValido` program → semantic analysis succeeds. Covers `const`, variables,
+   `stack<int>` + `push(5)`, `for`, `if` with `bool` condition, and `print`.
+2. Invalid `TestErrores` program → reports 5 accumulated semantic errors without aborting:
+   undeclared variable (`y = 20;`), assignment to `const` (`MAX = 200;`),
+   non-`bool` `if` condition (`if (x)` with `x: int`), type mismatch on assignment
+   (`x = "Hola Mundo";` with `x: int`), and `read(MAX)` into a constant.
+3. Out-of-scope `TestScope` program → declares `int temp` inside an `if` block and uses it
+   outside; reports `La variable 'temp' no ha sido declarada`, demonstrating scope
+   creation/destruction via `enterScope()` / `exitScope()`.
 
 ## Architecture
 
@@ -138,9 +149,9 @@ Source Code
          │ AST
          ▼
 ┌──────────────────┐
-│ Semantic Analyzer│  — not started (symbol table, type checking)
+│ Semantic Analyzer│  src/semanticAnalyzer.ts + src/symbolTable.ts — implemented
 └────────┬─────────┘
-         │ Typed AST
+          │ Errors / typed info
          ▼
 ┌──────────────────┐
 │ IR Generator     │  — not started (three-address code)
@@ -162,15 +173,25 @@ Source Code
 | Phase | Status | Notes |
 |---|---|---|
 | 1. Language / lexical / syntactic spec | ✅ Done | v0.1 specs in `documentation/` (language, lexical, EBNF syntax). Spec already defines `bool`, `while`, `stack<T>` / `queue<T>`, and method calls |
-| 2. Lexer (`src/lexer.ts`) | ✅ Implemented | Keywords `program int float bool string stack queue if else for while const print read true false`, identifiers, int/float/bool/string literals, operators (`+ - * / % = == != < <= > >= && \|\| !`), delimiters `() {} [] ; , .`, `//` comments, `EOF`, line/column tracking, `ERROR` recovery tokens. `[` / `]` already emitted, reused for arrays |
-| 3. Parser + AST (`src/parser.ts`, `src/ast.ts`) | ✅ Implemented | Recursive descent. Supports: `program`, var/const declarations (incl. parametrized `stack<T>` / `queue<T>` with primitive `T`, and array types `T[]` with primitive `T`), simple + indexed assignment (`x = e;`, `arr[i] = e;`), `if/else`, `for`, `while`, `print`/`read`, array literals (`[e, ...]` → `ArrayLiteral { elements }`), index access (`a[i]` → `IndexAccess { array, index }`), method calls `obj.method(arg, ...)` → `MethodCall` node (`object`, `method`, `args`), expression statements, full expression precedence. **Out of scope (will not be implemented):** multi-dimensional arrays, `const` of structured/array type, structured types in `for`-init |
-| 4. Semantic analyzer | ⬜ Not started | Symbol table, scopes, type checking (incl. `stack`/`queue` element-type checks, array element-type + index-type checks, `bool` conditions) |
+| 2. Lexer (`src/lexer.ts`) | ✅ Implemented | Keywords `program int float bool string stack queue if else for while const print read true false`, identifiers, int/float/bool/string literals, operators (`+ - * / % = == != < <= > >= && \|\| !`), delimiters `() {} [] ; , .`, `//` comments, `EOF`, line/column tracking, `ERROR` recovery tokens. `[` / `]` already emitted, reused for arrays. `Token` payload field renamed `value` → `lexeme` (`Token { type, lexeme, literal?, line, column }`, commit `32126e8`) |
+| 3. Parser + AST (`src/parser.ts`, `src/ast.ts`) | ✅ Implemented | Recursive descent. Supports: `program`, var/const declarations (incl. parametrized `stack<T>` / `queue<T>` with primitive `T`, and array types `T[]` with primitive `T`), simple + indexed assignment (`x = e;`, `arr[i] = e;`), `if/else`, `for`, `while` (condition is now required: `WhileStatementNode.condition: ExpressionNode`, not optional), `print`/`read`, array literals (`[e, ...]` → `ArrayLiteral { elements }`), index access (`a[i]` → `IndexAccess { array, index }`), method calls `obj.method(arg, ...)` → `MethodCall` node (`object`, `method`, `args`), expression statements, full expression precedence. **Out of scope (will not be implemented):** multi-dimensional arrays, `const` of structured/array type, structured types in `for`-init |
+| 4. Semantic analyzer (`src/semanticAnalyzer.ts` + `src/symbolTable.ts`) | ✅ Implemented | Visitor over the AST with non-fatal error accumulation (`SemanticError { message, line?, column? }` + `errors[]`, `analyze()` returns `errors.length === 0`). Symbol table as stack-of-maps with `enterScope`/`exitScope` (scopes opened for `if`/`for`/`while` bodies), `insert` (same-scope redeclaration check) and reverse `lookup` (shadowing-aware). Checks: declaration-before-use, `const` immutability (incl. `read()` into `const`), init/assignment type compatibility, `bool`-only `if`/`for`/`while` conditions, arithmetic vs relational operand compatibility (`== != < <= > >=` → `bool`), `int`-only array indices, homogeneous `ArrayLiteral` (empty `[]` defaults to `int[]`), `IndexAccess` element-type resolution (`T[]` → `T`), and `stack<T>`/`queue<T>` method validation (`push`/`pop`/`peek`/`isEmpty`/`size`/`clear`, `enqueue`/`dequeue`/`front`/`isEmpty`/`size`/`clear` with inner-type checks on `push`/`enqueue` and typed returns). `analyze()` accepts `ProgramNode | StatementNode[]` |
 | 5. Intermediate code | ⬜ Not started | Three-address code with temporals/labels |
 | 6. Optimizer | ⬜ Not started | Constant folding/propagation, DCE (planned) |
 | 7. JS code generator | ⬜ Not started |  |
-| 8. CLI + test suite | 🟡 Partial | Only `npm test` harness (`src/tests.ts`) with 3 manual cases (2 valid + 1 lexical error); no CLI yet |
+| 8. CLI + test suite | 🟡 Partial | `npm test` harness (`src/tests.ts`) now runs the full lexer → parser → semantic pipeline via `runSemanticTest()` with 3 semantic cases (1 valid + 1 multi-error + 1 scope error); no CLI yet |
 
-### Implemented since the previous README update (2026-09-18 → 2026-09-19, commit `51fa403` — array datatype)
+### Implemented since the previous README update (2026-09-18 → 2026-09-19, commits `32126e8`, `01c4044`, `8468250` — semantic analyzer)
+
+- **Symbol table** (`src/symbolTable.ts`, new): `SymbolEntry { name, type, kind ('variable'|'constant'), scope, mutable }` + `SymbolTable` as `Map[]` stack. `enterScope()` pushes a scope, `exitScope()` pops it, `insert()` rejects same-scope duplicates, `lookup()` searches innermost → global (shadowing-aware). Details in `documentation/SymbolTableExp.md`.
+- **Semantic analyzer core** (`src/semanticAnalyzer.ts`, new, `01c4044`): `SemanticAnalyzer.analyze()` → `visitProgram()` → `visitStatement()` dispatcher (`VariableDeclaration`, `ConstantDeclaration`, `IfStatement`, `ForStatement`, `WhileStatement`, `PrintStatement`, `ReadStatement`, `Assignment`, `ExpressionStatement`). Errors accumulate in `errors: SemanticError[]` instead of throwing. Type inference in `getExpressionType()` for `Literal` (int vs float via `Number.isInteger`), `Identifier` (table lookup), and `BinaryExpression` (arithmetic returns operand type, relational returns `bool`). Scope handling: `if`/`for`/`while` bodies run inside `enterScope()`/`exitScope()`. Details in `documentation/SemanticAnalyzerExp.md`.
+- **Semantic checks for collections** (commit `8468250`): indexed-assignment index must be `int` and value must match element type (`T[]` → `T`); `IndexAccess` requires `int` index and `T[]` base, returns `T`; `ArrayLiteral` enforces homogeneous element types (empty literal → `int[]`); `MethodCall` validates `stack` methods (`push`, `pop`, `peek`, `isEmpty`, `size`, `clear`) and `queue` methods (`enqueue`, `dequeue`, `front`, `isEmpty`, `size`, `clear`), checking `push`/`enqueue` arity (exactly 1 arg) and inner-type match (`stack<int>.push("s")` → error), with typed returns (`pop`/`peek`/`dequeue`/`front` → `T`, `size` → `int`, `isEmpty` → `bool`, `push`/`enqueue`/`clear` → `void`).
+- **`analyze()` input flexibility** (`src/semanticAnalyzer.ts:17-29`): accepts `ProgramNode | StatementNode[]` (single program or bare statement list).
+- **Token rename** (commit `32126e8`, `src/lexer.ts`, `src/parser.ts`): `Token.value` → `Token.lexeme` (all constructors and parser accesses updated; `literal`, `line`, `column` unchanged).
+- **AST fix** (`src/ast.ts`): `WhileStatementNode.condition` changed from optional (`condition?`) to required (`condition: ExpressionNode`).
+- **`src/tests.ts` harness rewrite:** replaced AST-dump / lexical-error harness (`testCompiler()` with `ArrayDemo`, `@` lexical error, `StackTest`) with semantic pipeline harness `runSemanticTest()` (lexer → parser → `SemanticAnalyzer.analyze()`, ✅/❌ + `console.table(analyzer.errors)`). Current cases: `TestValido` (valid, incl. `stack<int> numeros; numeros.push(5);`), `TestErrores` (5 accumulated errors), `TestScope` (use-after-scope). Verified `npm test` passes with 1 success + 2 failing-as-expected cases.
+
+### Implemented in the previous update (2026-09-18 → 2026-09-19, commit `51fa403` — array datatype)
 
 - **Array type declarations** (`src/parser.ts:93-97`): `T[]` where `T` is a primitive (`int`, `float`, `bool`, `string`) — parses optional `[` `]` after the base type and stores `varType: "int[]"` (e.g. `int[] numbers = [10, 20, 30];`).
 - **Array literals** (`src/ast.ts:83,117-120`, `src/parser.ts:416-431` in `primary()`): `[expr, ...]` with zero or more comma-separated `expression()` elements, including empty `[]` → `ArrayLiteral { elements }`.
@@ -194,13 +215,16 @@ Source Code
 - `const` only accepts primitive types: `constantDeclaration()` does not allow `T[]` or `stack<T>` / `queue<T>`. Fuera de alcance por decisión de diseño.
 - `for`-init only accepts primitive declarations or assignments: `stack<T>` / `queue<T>` / `T[]` declarations and indexed assignments are not handled in the `for (init; ...)` header (the `update` clause also only handles simple `x = e` assignments, not `arr[i] = e`). Fuera de alcance por decisión de diseño.
 - Index access is only single-level and identifier-rooted (`name[expr]`); chained access such as `a[0][1]` parses `a[0]` but leaves a trailing `[1]` unconsumed (consecuencia de no soportar arreglos multidimensionales).
+- Semantic analyzer does not visit `elseBranch` yet (`visitIfStatement` only checks `condition` and walks `thenBranch`), so declarations/errors inside `else` blocks are not analyzed.
+- `getExpressionType()` has no `UnaryExpression` (`!`, `-`) or logical `&&` / `||` handling: such conditions return `undefined` and skip the `bool` check instead of reporting an error.
+- Known typo/bug in `src/semanticAnalyzer.ts:371`: stack branch checks `node.method === 'isEmpyt'` instead of `'isEmpty'`, so `stack<T>.isEmpty()` falls through to the generic "no soporta la invocación de métodos" error (`queue.isEmpty()` works correctly).
 
 
 ## Roadmap
 
-1. Semantic analyzer (symbol table + scopes + type checking, incl. `stack`/`queue` generics, array element/index types, and `bool` conditions).
-2. IR generation → optimizer → JS code generation.
-3. Real CLI (`compiler program.lang → program.js`) + automated test suite.
+1. IR generation → optimizer → JS code generation.
+2. Real CLI (`compiler program.lang → program.js`) + automated test suite.
+3. Semantic follow-ups: visit `elseBranch`, type `UnaryExpression` / logical operators, fix `isEmpyt` typo, harden `for`-init/update coverage.
 
 ## Documentation
 
@@ -208,3 +232,4 @@ Source Code
 - `documentation/2-Especificacion_Lexica_Formal.md` — tokens, regexes, maximal munch, acceptance criteria.
 - `documentation/3-Especificacion_Sintactica_Formal.md` — EBNF grammar and precedence table.
 - `documentation/LexerExp.md`, `ParserExp.md`, `ASTExp.md` — implementation explanations.
+- `documentation/SymbolTableExp.md`, `SemanticAnalyzerExp.md` — symbol table and semantic analyzer implementation explanations.
