@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { compileSource } from './Analyzer/compiler';
 import { EXAMPLES, EXAMPLE_LABELS } from './Analyzer/examples';
+import CodeEditor from './components/CodeEditor';
 import Tabs, { type TabId } from './components/Tabs';
 
 export default function App() {
@@ -44,13 +45,18 @@ export default function App() {
       </div>
 
       <main className="panels">
-        <section className="editor-panel">
-          <h2>Código fuente</h2>
-          <textarea
+        <section className="min-h-[540px]">
+          <CodeEditor
             value={source}
-            onChange={(e) => setSource(e.target.value)}
-            spellCheck={false}
+            onChange={setSource}
             placeholder={'program Main {\n  print("Hola");\n}'}
+            fileName={
+              source === EXAMPLES.valido ? 'valido.pys' : 
+              source === EXAMPLES.errores ? 'errores.pys' : 
+              source === EXAMPLES.scope ? 'scope.pys' : 
+              source === EXAMPLES.arrays ? 'arrays.pys' : 
+              source === EXAMPLES.stack ? 'stack.pys' : 
+              'main.pys'}
           />
         </section>
 

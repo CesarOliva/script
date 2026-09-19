@@ -64,7 +64,7 @@ body {
   .panels { grid-template-columns: 1fr; }
 }
 
-.editor-panel, .result-panel {
+.result-panel {
   background: #141a24;
   border: 1px solid #263145;
   border-radius: 12px;
@@ -75,20 +75,6 @@ body {
 }
 
 .editor-panel h2, .result-panel h2 { margin: 0 0 12px; font-size: 16px; }
-
-textarea {
-  flex: 1;
-  min-height: 460px;
-  background: #0b0f16;
-  color: #e6e9ee;
-  border: 1px solid #2b3850;
-  border-radius: 8px;
-  padding: 12px;
-  font-family: 'JetBrains Mono', Consolas, monospace;
-  font-size: 13px;
-  line-height: 1.5;
-  resize: vertical;
-}
 
 pre {
   background: #0b0f16;
