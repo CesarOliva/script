@@ -60,7 +60,7 @@ export enum TokenType{
 
 export interface Token {
     type: TokenType;
-    value: string;
+    lexeme: string;
     literal?: any;
     line: number;
     column: number;
@@ -111,7 +111,7 @@ export class Lexer {
 
         this.tokens.push({
             type: TokenType.EOF,
-            value: "",
+            lexeme: "",
             line: this.line,
             column: this.column
         })
@@ -308,7 +308,7 @@ export class Lexer {
 
         this.tokens.push({
             type,
-            value: text,
+            lexeme: text,
             literal: value,
             line: this.line,
             column: this.startColumn
@@ -320,7 +320,7 @@ export class Lexer {
 
         this.tokens.push({
             type: TokenType.ERROR,
-            value: text,
+            lexeme: text,
             literal: message,
             line: this.line,
             column: this.startColumn

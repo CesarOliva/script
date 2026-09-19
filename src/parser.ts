@@ -29,7 +29,7 @@ export class Parser {
 
         return { 
             type: "Program",
-            name: nameToken.value,
+            name: nameToken.lexeme,
             body
         }
     }
@@ -88,12 +88,12 @@ export class Parser {
     // variableDeclaration ::= dataType IDENTIFIER "=" expression ";"
     private variableDeclaration(): AST.VariableDeclarationNode {
         const typeToken = this.previous();
-        let fullType = typeToken.value;
+        let fullType = typeToken.lexeme;
 
         // Arrays
         if (this.match(TokenType.leftBracket)) {
             this.consume(TokenType.rightBracket, "Se esperaba ']' en la declaración del tipo array");
-            fullType = `${typeToken.value}[]`;
+            fullType = `${typeToken.lexeme}[]`;
         }
 
         // Queues, Stacks
@@ -105,7 +105,7 @@ export class Parser {
             )
             this.consume(TokenType.greater_than, "Se esperaba '>' al cerrar el tipo parametrizado.");
 
-            fullType = `${typeToken.value}<${innerType.value}>`;
+            fullType = `${typeToken.lexeme}<${innerType.lexeme}>`;
         }
 
         const nameToken = this.consume(TokenType.identifier, "Se esperaba el nombre de la variable");
@@ -120,7 +120,7 @@ export class Parser {
         return { 
             type: "VariableDeclaration", 
             varType: fullType, 
-            name: nameToken.value, 
+            name: nameToken.lexeme, 
             initializer
         }
     }
@@ -138,8 +138,8 @@ export class Parser {
 
         return {
             type: "ConstantDeclaration",
-            varType: typeToken.value,
-            name: nameToken.value,
+            varType: typeToken.lexeme,
+            name: nameToken.lexeme,
             value
         }
     }
@@ -191,7 +191,7 @@ export class Parser {
         let update: AST.ExpressionNode | AST.StatementNode | undefined;
         if(!this.check(TokenType.rightParen)) {
             if(this.check(TokenType.identifier) && this.peekNextType() === TokenType.assign) {
-                const target = this.advance().value;
+                const target = this.advance().lexeme;
                 this.advance();
                 update = { 
                     type: "Assignment", 
@@ -246,7 +246,7 @@ export class Parser {
     // readStatement ::= "read" "(" target ")" ";"
     private readStatement(): AST.ReadStatementNode {
         this.consume(TokenType.leftParen, "Se esperaba '(' tras 'read'.");
-        const target = this.consume(TokenType.identifier, "Se esperaba una variable en 'read'.").value;
+        const target = this.consume(TokenType.identifier, "Se esperaba una variable en 'read'.").lexeme;
         this.consume(TokenType.rightParen, "Se esperaba ')' tras 'read(...)'.");
         this.consume(TokenType.semicolon, "Se esperaba ';' tras 'read(...)'.");
 
@@ -257,7 +257,7 @@ export class Parser {
     }
 
     private assignmentStatement(): AST.AssignmentNode {
-        const target = this.consume(TokenType.identifier, "Se esperaba el identificador").value;
+        const target = this.consume(TokenType.identifier, "Se esperaba el identificador").lexeme;
         let index: AST.ExpressionNode | undefined;
 
         if (this.match(TokenType.leftBracket)) {
@@ -307,7 +307,7 @@ export class Parser {
     private logicalOr(): AST.ExpressionNode {
         let expr = this.logicalAnd();
         while (this.match(TokenType.or)) {
-            const operator = this.previous().value;
+            const operator = this.previous().lexeme;
             const right = this.logicalAnd();
             expr = {
                 type: "BinaryExpression",
@@ -323,7 +323,7 @@ export class Parser {
     private logicalAnd(): AST.ExpressionNode {
         let expr = this.equality();
         while (this.match(TokenType.and)) {
-            const operator = this.previous().value;
+            const operator = this.previous().lexeme;
             const right = this.equality();
             expr = {
                 type: "BinaryExpression",
@@ -339,7 +339,7 @@ export class Parser {
     private equality(): AST.ExpressionNode {
         let expr = this.relational();
         while (this.match(TokenType.equal_equal, TokenType.not_equal)) {
-            const operator = this.previous().value;
+            const operator = this.previous().lexeme;
             const right = this.relational();
             expr = {
                 type: "BinaryExpression",
@@ -355,7 +355,7 @@ export class Parser {
     private relational(): AST.ExpressionNode {
         let expr = this.additive();
         while (this.match(TokenType.less_than, TokenType.less_than_equal, TokenType.greater_than, TokenType.greater_than_equal)) {
-            const operator = this.previous().value;
+            const operator = this.previous().lexeme;
             const right = this.additive();
             expr = {
                 type: "BinaryExpression",
@@ -371,7 +371,7 @@ export class Parser {
     private additive(): AST.ExpressionNode {
         let expr = this.multiplicative();
         while (this.match(TokenType.plus, TokenType.minus)) {
-            const operator = this.previous().value;
+            const operator = this.previous().lexeme;
             const right = this.multiplicative();
             expr = {
                 type: "BinaryExpression",
@@ -387,7 +387,7 @@ export class Parser {
     private multiplicative(): AST.ExpressionNode {
         let expr = this.unary();
         while (this.match(TokenType.multiply, TokenType.divide, TokenType.module)) {
-            const operator = this.previous().value;
+            const operator = this.previous().lexeme;
             const right = this.unary();
             expr = {
                 type: "BinaryExpression",
@@ -402,7 +402,7 @@ export class Parser {
 
     private unary(): AST.ExpressionNode {
         if (this.match(TokenType.not, TokenType.minus)) {
-            const operator = this.previous().value;
+            const operator = this.previous().lexeme;
             const argument = this.unary();
             return { 
                 type: "UnaryExpression", 
@@ -436,13 +436,13 @@ export class Parser {
             return {
                 type: "Literal",
                 value: token.literal, 
-                raw: token.value
+                raw: token.lexeme
             }
         }
 
         // Identificadores, Metodos y acceso por indice
         if (this.match(TokenType.identifier)) {
-            const name = this.previous().value;
+            const name = this.previous().lexeme;
             let expr: AST.ExpressionNode = {
                 type: "Identifier",
                 name
@@ -476,7 +476,7 @@ export class Parser {
                 return {
                     type: "MethodCall",
                     object: name,
-                    method: methodToken.value,
+                    method: methodToken.lexeme,
                     args
                 }
             }
@@ -490,7 +490,7 @@ export class Parser {
             return expr;
         }
 
-        throw new Error(`[Línea ${this.peek().line}, Col ${this.peek().column}] Error Sintáctico: Expresión no válida cerca de '${this.peek().value}'`);
+        throw new Error(`[Línea ${this.peek().line}, Col ${this.peek().column}] Error Sintáctico: Expresión no válida cerca de '${this.peek().lexeme}'`);
     }
 
     // Métodos auxiliares
@@ -507,7 +507,7 @@ export class Parser {
 
     private consume(type: TokenType, message: string): Token {
         if (this.check(type)) return this.advance();
-        throw new Error(`[Línea ${this.peek().line}, Col ${this.peek().column}] Error Sintáctico: ${message} (Se encontró '${this.peek().value}')`);
+        throw new Error(`[Línea ${this.peek().line}, Col ${this.peek().column}] Error Sintáctico: ${message} (Se encontró '${this.peek().lexeme}')`);
     }
 
     private consumeAny(types: TokenType[], message: string): Token {
