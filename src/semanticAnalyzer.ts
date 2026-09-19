@@ -7,12 +7,24 @@ export interface SemanticError {
     column?: number;
 }
 
+const stackMethods = ['push', 'pop', 'peek', 'isEmpty', 'size', 'clear'];
+const queueMethods = ['enqueue', 'dequeue', 'front', 'isEmpty', 'size', 'clear'];
+
 export class SemanticAnalyzer {
     private symbolTable = new SymbolTable();
     public errors: SemanticError[] = [];
 
-    analyze(ast: AST.ProgramNode): boolean {
-        this.visitProgram(ast);
+    analyze(ast: AST.ProgramNode | AST.StatementNode[]): boolean {
+        this.errors = [];
+
+        if ('body' in ast && Array.isArray(ast.body)) {
+            this.visitProgram(ast as AST.ProgramNode);
+        } else if (Array.isArray(ast)){
+            for (const stmt of ast) {
+                this.visitStatement(stmt);
+            }
+        }
+
         return this.errors.length === 0;
     }
 
@@ -83,7 +95,7 @@ export class SemanticAnalyzer {
 
     private visitConstantDeclaration(node: AST.ConstantDeclarationNode): void {
         const valueType = this.getExpressionType(node.value);
-        if(valueType && valueType!== node.varType) {
+        if (valueType && valueType!== node.varType) {
             this.errors.push({
                 message: `Incompatibilidad de tipos en constante '${node.name}': Se esperaba '${node.varType}', se obtuvo '${valueType}'`
             })
@@ -97,7 +109,7 @@ export class SemanticAnalyzer {
             mutable: false
         })
 
-        if(!inserted) {
+        if (!inserted) {
             this.errors.push({
                 message: `La constante '${node.name}' ya ha sido declarada en este ámbito`
             })
@@ -128,7 +140,7 @@ export class SemanticAnalyzer {
 
         if (node.condition) {
             const condType = this.getExpressionType(node.condition);
-            if(condType && condType !== 'bool') {
+            if (condType && condType !== 'bool') {
                 this.errors.push({
                     message: `La condición del 'for' debe ser de tipo 'bool', se obtuvo '${condType}'`
                 })
@@ -136,7 +148,7 @@ export class SemanticAnalyzer {
         }
 
         if (node.update) {
-            if('type' in node.update && typeof node.update.type === 'string' && node.update.type.endsWith('Statement')) {
+            if ('type' in node.update && typeof node.update.type === 'string' && node.update.type.endsWith('Statement')) {
                 this.visitStatement(node.update as AST.StatementNode);
             } else {
                 this.getExpressionType(node.update as AST.ExpressionNode);
@@ -173,14 +185,14 @@ export class SemanticAnalyzer {
     private visitReadStatement(node: AST.ReadStatementNode): void {
         const symbol = this.symbolTable.lookup(node.target);
 
-        if(!symbol) {
+        if (!symbol) {
             this.errors.push({
                 message: `La variable '${node.target}' utilizada en 'read()' no ha sido declarada`
             })
             return;
         }
 
-        if(!symbol.mutable) {
+        if (!symbol.mutable) {
             this.errors.push({
                 message: `No se puede leer un valor mediante 'read()' hacia la constante '${node.target}'`
             })
@@ -197,14 +209,28 @@ export class SemanticAnalyzer {
             return;
         }
 
-        if(!symbol.mutable) {
+        if (!symbol.mutable) {
             this.errors.push({
                 message: `No se puede modificar la constante '${node.target}'`
             })
         }
 
+        if (node.index) {
+            const indexType = this.getExpressionType(node.index);
+            if (indexType && indexType !== 'int') {
+                this.errors.push({
+                    message: `El índice de un arreglo debe ser de tipo 'int', se recibió '${indexType}'`
+                });
+            }
+        }
+
         const exprType = this.getExpressionType(node.value);
-        if (exprType && exprType !== symbol.type) {
+
+        const expectedType = node.index && symbol.type.endsWith('[]')
+            ? symbol.type.replace('[]', '')
+            : symbol.type;
+
+        if (exprType && exprType !== expectedType) {
             this.errors.push({
                 message: `No se puede asignar un valor de tipo '${exprType}' a '${node.target}' (${symbol.type})`
             })
@@ -261,8 +287,135 @@ export class SemanticAnalyzer {
                 return undefined
             }
 
+            case 'MethodCall':
+                return this.visitMethodCall(expr);
+
+            case 'IndexAccess': {
+                const arrayType = this.getExpressionType(expr.array);
+                const indexType = this.getExpressionType(expr.index);
+
+                if (indexType && indexType !== 'int') {
+                    this.errors.push({
+                        message: `El índice de acceso al arreglo debe ser de tipo 'int', se recibió '${indexType}'`
+                    })
+                }
+
+                if (arrayType && arrayType.endsWith('[]')) {
+                    return arrayType.replace('[]', '');
+                }
+
+                this.errors.push({
+                    message: `Acceso por índice no válido sobre el tipo '${arrayType}'`
+                })
+                return undefined;
+            }
+
+            case "ArrayLiteral": {
+                if (expr.elements.length === 0) return 'int[]';
+
+                const firstType = this.getExpressionType(expr.elements[0]);
+                for(let i = 1; i < expr.elements.length; i++) {
+                    const elemType = this.getExpressionType(expr.elements[i]);
+                    if (elemType !== firstType) {
+                        this.errors.push({
+                            message: `Los elementos del arreglo deben ser homogéneos. Se encontró '${elemType}' y '${firstType}'`
+                        })
+                    }
+                }
+                
+                return `${firstType}[]`;
+            }
+
             default:
                 return undefined;
         }
+    }
+
+    private visitMethodCall(node: AST.MethodCallNode): string | undefined {
+        const symbol = this.symbolTable.lookup(node.object);
+
+        if (!symbol) {
+            this.errors.push({
+                message: `El objeto '${node.object}' no ha sido declarado`
+            })
+            return undefined;
+        }
+
+        if (symbol.type.startsWith('stack<')) {
+            if (!stackMethods.includes(node.method)) {
+                this.errors.push({
+                    message: `El método '${node.method}()' no existe para la estructura 'stack'. Métodos válidos: ${stackMethods.join(', ')}`
+                })
+                return undefined;
+            }
+            const innerType = symbol.type.match(/<(.+)>/)?.[1];
+
+            if (node.method == 'push') {
+                if (node.args.length !== 1) {
+                    this.errors.push({
+                        message: `El método 'push()' requiere exactamente 1 argumento.`
+                    })
+                } else {
+                    const argType = this.getExpressionType(node.args[0]);
+                    if (argType && argType !== innerType) {
+                        this.errors.push({
+                            message: `Elemento incorrecto en stack: 'push()' esperaba '${innerType}', recibió '${argType}'`
+                        })
+                    }
+                }
+                return 'void';
+            }
+
+            if(node.method === 'pop' || node.method === 'peek') return innerType;
+
+            if(node.method === 'isEmpyt') return 'bool';
+
+            if(node.method === 'size') return 'int';
+
+            if(node.method === 'clear') return 'void';
+        }
+
+        if (symbol.type.startsWith('queue<')) {
+            if (!queueMethods.includes(node.method)) {
+                this.errors.push({
+                    message: `El método '${node.method}()' no existe para la estructura 'queue'. Métodos válidos: ${queueMethods.join(', ')}`
+                })
+            }
+
+            const innerType = symbol.type.match(/<(.+)>/)?.[1];
+
+            if(node.method === 'enqueue') {
+                if(node.args.length !== 1) {
+                    this.errors.push({ 
+                        message: `El método 'enqueue()' requiere exactamente 1 argumento`
+                    });
+                } else {
+                    const argType = this.getExpressionType(node.args[0]);
+                    if(argType && argType !== innerType) {
+                        this.errors.push({
+                            message: `Elemento incorrecto en queue: 'enqueue()' esperaba '${innerType}', pero recibió '${argType}'`
+                        })
+                    }
+                }
+                return 'void';
+            }
+
+            if (node.method === 'dequeue' || node.method === 'front') return innerType;
+
+            if (node.method === 'isEmpty') return 'bool';
+
+            if(node.method === 'size') return 'int';
+
+            if(node.method === 'clear') return 'void'
+        }
+
+        this.errors.push({
+            message: `La variable '${node.object}' (${symbol.type}) no soporta la invocación de métodos`
+        })
+        return undefined
+    }
+
+    public getSymbolTable(): SymbolTable {
+        return this.symbolTable;
     }
 }

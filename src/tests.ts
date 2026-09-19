@@ -29,13 +29,15 @@ function runSemanticTest(testName: string, source: string) {
 }
 
 // -----------------------------------------------------------------------------
-// CASO 1: Programa Válido (Integra variables, constantes, asignaciones, for e if)
+// CASO 1: Programa Válido (Integra variables, constantes, asignaciones, for, if y stack)
 // -----------------------------------------------------------------------------
 const validCode = `
 program TestValido {
   const int LIMIT = 5;
   int count = 0;
   string msg = "Iteracion:";
+  stack<int> numeros;
+  numeros.push(5);
 
   for (int i = 0; i < LIMIT; i = i + 1) {
     print(msg);
