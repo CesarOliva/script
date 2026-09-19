@@ -47,4 +47,8 @@ export class SymbolTable {
     getCurrentScopeLevel(): number {
         return this.currentScope;
     }
+
+    getAllSymbols(): SymbolEntry[] {
+        return this.scopes.flatMap((scope) => [...scope.values()]);
+    }
 }
