@@ -75,6 +75,12 @@ export class Parser {
             return this.assignmentStatement();
         }
 
+        if (
+            this.check(TokenType.identifier) &&
+            (this.peekNextType() === TokenType.assign || this.peekNextType() === TokenType.leftBracket)
+        ) {
+            return this.assignmentStatement();
+        }
         return this.expressionStatement();
     }
 
@@ -84,6 +90,13 @@ export class Parser {
         const typeToken = this.previous();
         let fullType = typeToken.value;
 
+        // Arrays
+        if (this.match(TokenType.leftBracket)) {
+            this.consume(TokenType.rightBracket, "Se esperaba ']' en la declaración del tipo array");
+            fullType = `${typeToken.value}[]`;
+        }
+
+        // Queues, Stacks
         if (typeToken.type === TokenType.stack || typeToken.type === TokenType.queue) {
             this.consume(TokenType.less_than, "Se esperaba '<' tras la declaración del tipo de estructura.");
             const innerType = this.consumeAny(
@@ -245,19 +258,27 @@ export class Parser {
 
     private assignmentStatement(): AST.AssignmentNode {
         const target = this.consume(TokenType.identifier, "Se esperaba el identificador").value;
-        this.consume(TokenType.assign, "Se esperaba '='");
+        let index: AST.ExpressionNode | undefined;
+
+        if (this.match(TokenType.leftBracket)) {
+            index = this.expression();
+            this.consume(TokenType.rightBracket, "Se esperaba ']' tras el indice del arreglo.");
+        }
+
+        this.consume(TokenType.assign, "Se esperaba '=' en la asignación");
         const value = this.expression();
         this.consume(TokenType.semicolon, "Se esperaba ';' al final de la asignación");
 
         return {
             type: "Assignment",
             target,
+            index,
             value
         }
     }
 
     private block(): AST.StatementNode[] {
-        this.consume(TokenType.leftBrace, "Se esparaba '{' al inicio del bloque");
+        this.consume(TokenType.leftBrace, "Se esperaba '{' al inicio del bloque");
         const statements: AST.StatementNode[] = [];
 
         while (!this.check(TokenType.rightBrace) && !this.isAtEnd()) {
@@ -393,6 +414,23 @@ export class Parser {
     }
 
     private primary(): AST.ExpressionNode {
+        // Literales de array
+        if (this.match(TokenType.leftBracket)) {
+            const elements: AST.ExpressionNode[] = [];
+            if (!this.check(TokenType.rightBracket)) {
+                do {
+                    elements.push(this.expression());
+                } while (this.match(TokenType.comma))
+            }
+
+            this.consume(TokenType.rightBracket, "Se esperaba ']' al cerrar el literal de array")
+            return {
+                type: "ArrayLiteral",
+                elements
+            }
+        }
+
+        // Literales Primitivos
         if (this.match(TokenType.integerLiteral, TokenType.floatLiteral, TokenType.stringLiteral, TokenType.booleanLiteral)) {
             const token = this.previous();
             return {
@@ -402,12 +440,29 @@ export class Parser {
             }
         }
 
-        if(this.match(TokenType.identifier)) {
+        // Identificadores, Metodos y acceso por indice
+        if (this.match(TokenType.identifier)) {
             const name = this.previous().value;
+            let expr: AST.ExpressionNode = {
+                type: "Identifier",
+                name
+            }
 
+            // Acceso por indice
+            if (this.match(TokenType.leftBracket)) {
+                const index = this.expression();
+                this.consume(TokenType.rightBracket, "Se esperaba ']' tras el indice");
+                expr = {
+                    type: "IndexAccess",
+                    array: expr,
+                    index
+                }
+            }
+
+            // Llamadas a metodos
             if (this.match(TokenType.dot)) {
                 const methodToken = this.consume(TokenType.identifier, "Se esperaba el nombre del método tras '.'");
-                this.consume(TokenType.leftParen, "Se esparaba '(' tras el nombre del método")
+                this.consume(TokenType.leftParen, "Se esperaba '(' tras el nombre del método")
 
                 const args: AST.ExpressionNode[] = [];
                 if(!this.check(TokenType.rightParen)) {
@@ -426,10 +481,7 @@ export class Parser {
                 }
             }
 
-            return {
-                type: "Identifier",
-                name
-            }
+            return expr;
         }
 
         if(this.match(TokenType.leftParen)) {

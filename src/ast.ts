@@ -65,6 +65,7 @@ export interface ReadStatementNode {
 export interface AssignmentNode {
     type: "Assignment";
     target: string;
+    index?: ExpressionNode;
     value: ExpressionNode;
 }
 
@@ -78,7 +79,9 @@ export type ExpressionNode =
     | UnaryExpressionNode
     | LiteralNode 
     | IdentifierNode
-    | MethodCallNode;
+    | MethodCallNode
+    | ArrayLiteralNode
+    | IndexAccessNode;
 
 export interface BinaryExpressionNode {
     type: "BinaryExpression";
@@ -109,4 +112,15 @@ export interface MethodCallNode {
     object: string;
     method: string;
     args: ExpressionNode[];
+}
+
+export interface ArrayLiteralNode {
+    type: "ArrayLiteral";
+    elements: ExpressionNode[];
+}
+
+export interface IndexAccessNode {
+    type: "IndexAccess";
+    array: ExpressionNode;
+    index: ExpressionNode;
 }

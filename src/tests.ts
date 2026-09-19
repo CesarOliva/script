@@ -30,16 +30,18 @@ function testCompiler(testName: string, source: string) {
 }
 
 // Ejemplo 1: Caso Totalmente Válido
-const validCode = `
-program TestValido {
-  int A = 5;
-  int B = 8;
+const validCode = ` 
+program ArrayDemo {
+  int[] numbers = [10, 20, 30];
   
-  if (A == B) {
-    print("Iguales");
-  } else {
-    print("Diferentes");
-  }
+  // Acceso a un valor
+  int first = numbers[0];
+  
+  // Modificación mediante asignación por índice
+  numbers[1] = 50;
+
+  // Lectura con entrada/salida
+  print(numbers[1]);
 }
 `;
 
@@ -52,7 +54,7 @@ program TestErrorLexico {
 
 const syntaxErrorCode = `
 program StackTest {
-  sstack<int> numbers;
+  stack<int> numbers;
   numbers.push(10);
   
   while (numbers.size() > 0) {
