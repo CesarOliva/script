@@ -175,11 +175,21 @@ Source Code
 | 1. Language / lexical / syntactic spec | ✅ Done | v0.1 specs in `documentation/` (language, lexical, EBNF syntax). Spec already defines `bool`, `while`, `stack<T>` / `queue<T>`, and method calls |
 | 2. Lexer (`src/lexer.ts`) | ✅ Implemented | Keywords `program int float bool string stack queue if else for while const print read true false`, identifiers, int/float/bool/string literals, operators (`+ - * / % = == != < <= > >= && \|\| !`), delimiters `() {} [] ; , .`, `//` comments, `EOF`, line/column tracking, `ERROR` recovery tokens. `[` / `]` already emitted, reused for arrays. `Token` payload field renamed `value` → `lexeme` (`Token { type, lexeme, literal?, line, column }`, commit `32126e8`) |
 | 3. Parser + AST (`src/parser.ts`, `src/ast.ts`) | ✅ Implemented | Recursive descent. Supports: `program`, var/const declarations (incl. parametrized `stack<T>` / `queue<T>` with primitive `T`, and array types `T[]` with primitive `T`), simple + indexed assignment (`x = e;`, `arr[i] = e;`), `if/else`, `for`, `while` (condition is now required: `WhileStatementNode.condition: ExpressionNode`, not optional), `print`/`read`, array literals (`[e, ...]` → `ArrayLiteral { elements }`), index access (`a[i]` → `IndexAccess { array, index }`), method calls `obj.method(arg, ...)` → `MethodCall` node (`object`, `method`, `args`), expression statements, full expression precedence. **Out of scope (will not be implemented):** multi-dimensional arrays, `const` of structured/array type, structured types in `for`-init |
-| 4. Semantic analyzer (`src/semanticAnalyzer.ts` + `src/symbolTable.ts`) | ✅ Implemented | Visitor over the AST with non-fatal error accumulation (`SemanticError { message, line?, column? }` + `errors[]`, `analyze()` returns `errors.length === 0`). Symbol table as stack-of-maps with `enterScope`/`exitScope` (scopes opened for `if`/`for`/`while` bodies), `insert` (same-scope redeclaration check) and reverse `lookup` (shadowing-aware). Checks: declaration-before-use, `const` immutability (incl. `read()` into `const`), init/assignment type compatibility, `bool`-only `if`/`for`/`while` conditions, arithmetic vs relational operand compatibility (`== != < <= > >=` → `bool`), `int`-only array indices, homogeneous `ArrayLiteral` (empty `[]` defaults to `int[]`), `IndexAccess` element-type resolution (`T[]` → `T`), and `stack<T>`/`queue<T>` method validation (`push`/`pop`/`peek`/`isEmpty`/`size`/`clear`, `enqueue`/`dequeue`/`front`/`isEmpty`/`size`/`clear` with inner-type checks on `push`/`enqueue` and typed returns). `analyze()` accepts `ProgramNode | StatementNode[]` |
+| 4. Semantic analyzer (`src/semanticAnalyzer.ts` + `src/symbolTable.ts`) | ✅ Implemented | Visitor over the AST with non-fatal error accumulation (`SemanticError { message, line?, column? }` + `errors[]`, `analyze()` returns `errors.length === 0`). Symbol table as stack-of-maps with `enterScope`/`exitScope` (scopes opened for `if`/`for`/`while` bodies, incl. `then`/`else` branches), `insert` (same-scope redeclaration check) and reverse `lookup` (shadowing-aware). Checks: declaration-before-use, `const` immutability (incl. `read()` into `const`), init/assignment type compatibility, `bool`-only `if`/`for`/`while` conditions, arithmetic vs relational operand compatibility (`== != < <= > >=` → `bool`), logical `&&`/`||` (both sides must be `bool` → `bool`), unary `!` (requires `bool` → `bool`) and unary `-` (requires `int`/`float`, preserves operand type), `int`-only array indices, homogeneous `ArrayLiteral` (empty `[]` defaults to `int[]`), `IndexAccess` element-type resolution (`T[]` → `T`), and `stack<T>`/`queue<T>` method validation (`push`/`pop`/`peek`/`isEmpty`/`size`/`clear`, `enqueue`/`dequeue`/`front`/`isEmpty`/`size`/`clear` with inner-type checks on `push`/`enqueue` and typed returns). `else if` chains handled by recursing into `visitIfStatement()`. `analyze()` accepts `ProgramNode | StatementNode[]` |
 | 5. Intermediate code | ⬜ Not started | Three-address code with temporals/labels |
 | 6. Optimizer | ⬜ Not started | Constant folding/propagation, DCE (planned) |
 | 7. JS code generator | ⬜ Not started |  |
 | 8. CLI + test suite | 🟡 Partial | `npm test` harness (`src/tests.ts`) now runs the full lexer → parser → semantic pipeline via `runSemanticTest()` with 3 semantic cases (1 valid + 1 multi-error + 1 scope error); no CLI yet |
+
+### Implemented since the previous README update (unary + logical operators — `getExpressionType`)
+
+- **Logical `&&` / `||`** (`src/semanticAnalyzer.ts`, caso `BinaryExpression`): ambos operandos deben ser `'bool'`; cada lado infractor se reporta por separado (`El operador '&&' requiere operandos de tipo 'bool', se recibió 'int' en el lado izquierdo`) y la expresión retorna `'bool'`, por lo que funciona en condiciones (`if (a && b)`) y en asignaciones (`bool c = a && b;`, `int y = x && b;` → doble error: operador + asignación).
+- **Unary `!` / `-`** (nuevo caso `UnaryExpression`): `!` exige operando `'bool'` y retorna `'bool'` (soporta anidación como `!!a` y `!(a && b)`); `-` exige operando numérico (`'int'`/`'float'`) y retorna el tipo del operando (`int y = -x;`, `float f = -2.5;`). Si el tipo del operando es desconocido (variable no declarada), no se emite error de operador adicional para evitar cascadas.
+- Verificado con 11 casos (válidos e inválidos, incl. propagación de tipos y no-cascada) más `npm test` sin regresiones. Detalles en `documentation/SemanticAnalyzerExp.md`.
+
+### Implemented since the previous README update (commit `07b33b4` + fix — `else` branch + `isEmpty`)
+
+- **`else` / `else if` now analyzed** (`src/semanticAnalyzer.ts:133-143`, `visitIfStatement`): `elseBranch` as `StatementNode[]` is visited in its own `enterScope()`/`exitScope()` block; `else if` (`elseBranch` as `IfStatementNode`) recurses into `visitIfStatement()`. Verificado: un error solo en el `else` (`y = 20;` con `y` no declarada) ahora se reporta, y un error en el `then` se reporta exactamente una vez.
 
 ### Implemented since the previous README update (2026-09-18 → 2026-09-19, commits `32126e8`, `01c4044`, `8468250` — semantic analyzer)
 
@@ -215,16 +225,13 @@ Source Code
 - `const` only accepts primitive types: `constantDeclaration()` does not allow `T[]` or `stack<T>` / `queue<T>`. Fuera de alcance por decisión de diseño.
 - `for`-init only accepts primitive declarations or assignments: `stack<T>` / `queue<T>` / `T[]` declarations and indexed assignments are not handled in the `for (init; ...)` header (the `update` clause also only handles simple `x = e` assignments, not `arr[i] = e`). Fuera de alcance por decisión de diseño.
 - Index access is only single-level and identifier-rooted (`name[expr]`); chained access such as `a[0][1]` parses `a[0]` but leaves a trailing `[1]` unconsumed (consecuencia de no soportar arreglos multidimensionales).
-- Semantic analyzer does not visit `elseBranch` yet (`visitIfStatement` only checks `condition` and walks `thenBranch`), so declarations/errors inside `else` blocks are not analyzed.
-- `getExpressionType()` has no `UnaryExpression` (`!`, `-`) or logical `&&` / `||` handling: such conditions return `undefined` and skip the `bool` check instead of reporting an error.
-- Known typo/bug in `src/semanticAnalyzer.ts:371`: stack branch checks `node.method === 'isEmpyt'` instead of `'isEmpty'`, so `stack<T>.isEmpty()` falls through to the generic "no soporta la invocación de métodos" error (`queue.isEmpty()` works correctly).
 
 
 ## Roadmap
 
 1. IR generation → optimizer → JS code generation.
 2. Real CLI (`compiler program.lang → program.js`) + automated test suite.
-3. Semantic follow-ups: visit `elseBranch`, type `UnaryExpression` / logical operators, fix `isEmpyt` typo, harden `for`-init/update coverage.
+3. Semantic follow-ups: harden `for`-init/update coverage.
 
 ## Documentation
 

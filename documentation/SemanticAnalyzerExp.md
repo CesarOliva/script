@@ -45,7 +45,10 @@ El funcionamiento y la arquitectura de este módulo se dividen en los siguientes
 * Para los literales directos, los clasifica analizando el valor base (separando dinámicamente un `int` de un `float` con comprobaciones numéricas).
 
 
-* Para las expresiones binarias, evalúa ambos lados (`left` y `right`). Si es un operador aritmético (`+`, `-`, `*`), confirma que los operandos posean tipos compatibles y retorna dicho tipo. Si detecta un operador relacional (`==`, `<`, etc.), verifica la compatibilidad de lados y retorna invariablemente el tipo `'bool'`.
+* Para las expresiones binarias, evalúa ambos lados (`left` y `right`). Si es un operador aritmético (`+`, `-`, `*`), confirma que los operandos posean tipos compatibles y retorna dicho tipo. Si detecta un operador relacional (`==`, `<`, etc.), verifica la compatibilidad de lados y retorna invariablemente el tipo `'bool'`. Si detecta un operador lógico (`&&`, `||`), exige que ambos lados sean `'bool'` (reportando el lado infractor por separado) y retorna `'bool'`.
+
+
+* Para las expresiones unarias, evalúa el `argument`. El operador `!` exige un operando `'bool'` y retorna `'bool'`; el operador `-` exige un operando numérico (`'int'` o `'float'`) y retorna el tipo del operando. Si el tipo del operando es desconocido (p. ej. variable no declarada), no se reporta un error de operador adicional para evitar diagnósticos en cascada.
 
 
 * Para sentencias de control, métodos como `visitIfStatement()` dependen de esta función para restringir y obligar a que la condición analizada resulte exclusivamente en un `bool`.

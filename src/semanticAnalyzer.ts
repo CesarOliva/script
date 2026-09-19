@@ -133,7 +133,7 @@ export class SemanticAnalyzer {
         if (node.elseBranch) {
             if (Array.isArray(node.elseBranch)) {
                 this.symbolTable.enterScope();
-                for (const stmt of node.thenBranch) {
+                for (const stmt of node.elseBranch) {
                     this.visitStatement(stmt);
                 }
                 this.symbolTable.exitScope();
@@ -278,6 +278,20 @@ export class SemanticAnalyzer {
                 const leftType = this.getExpressionType(expr.left);
                 const rightType = this.getExpressionType(expr.right);
 
+                if (['&&', '||'].includes(expr.operator)) {
+                    if (leftType && leftType !== 'bool') {
+                        this.errors.push({
+                            message: `El operador '${expr.operator}' requiere operandos de tipo 'bool', se recibió '${leftType}' en el lado izquierdo`
+                        })
+                    }
+                    if (rightType && rightType !== 'bool') {
+                        this.errors.push({
+                            message: `El operador '${expr.operator}' requiere operandos de tipo 'bool', se recibió '${rightType}' en el lado derecho`
+                        })
+                    }
+                    return 'bool';
+                }
+
                 if (['==', '!=', '<', '<=','>', '>='].includes(expr.operator)) {
                     if (leftType !== rightType) {
                         this.errors.push({
@@ -297,6 +311,30 @@ export class SemanticAnalyzer {
                 }
 
                 return undefined
+            }
+
+            case 'UnaryExpression': {
+                const argType = this.getExpressionType(expr.argument);
+
+                if (expr.operator === '!') {
+                    if (argType && argType !== 'bool') {
+                        this.errors.push({
+                            message: `El operador '!' requiere un operando de tipo 'bool', se recibió '${argType}'`
+                        })
+                    }
+                    return 'bool';
+                }
+
+                if (expr.operator === '-') {
+                    if (argType && argType !== 'int' && argType !== 'float') {
+                        this.errors.push({
+                            message: `El operador '-' requiere un operando numérico ('int' o 'float'), se recibió '${argType}'`
+                        })
+                    }
+                    return argType;
+                }
+
+                return undefined;
             }
 
             case 'MethodCall':
