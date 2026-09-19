@@ -1,69 +1,94 @@
-import { Lexer } from "./lexer"; // Ajusta ruta
-import { Parser } from "./parser"; // Ajusta ruta
+import { Lexer } from './lexer';
+import { Parser } from './parser';
+import { SemanticAnalyzer } from './semanticAnalyzer';
 
-function testCompiler(testName: string, source: string) {
-  console.log(`\n==================================================`);
+function runSemanticTest(testName: string, source: string) {
+  console.log(`==================================================`);
   console.log(` RUNNING TEST: ${testName}`);
   console.log(`==================================================`);
 
-  try {
-    // 1. Fase Léxica
-    const lexer = new Lexer(source);
-    const tokens = lexer.scanTokens();
+  // 1. Fase Léxica
+  const lexer = new Lexer(source);
+  const tokens = lexer.scanTokens();
 
-    const lexicalErrors = tokens.filter((t) => t.type === ("ERROR" as any));
-    if (lexicalErrors.length > 0) {
-      console.error("❌ ERRORES LÉXICOS DETECTADOS:");
-      console.table(lexicalErrors);
-      return;
-    }
+  // 2. Fase Sintáctica
+  const parser = new Parser(tokens);
+  const ast = parser.parse();
 
-    // 2. Fase Sintáctica
-    const parser = new Parser(tokens);
-    const ast = parser.parse();
+  // 3. Fase Semántica
+  const analyzer = new SemanticAnalyzer();
+  const isValid = analyzer.analyze(ast);
 
-    console.log("✅ ÁRBOLES DE SINTAXIS ABSTRACTA (AST) GENERADO EXITOSAMENTE:");
-    console.log(JSON.stringify(ast, null, 2));
-  } catch (error: any) {
-    console.error("❌ " + error.message);
+  if (isValid) {
+    console.log("✅ ANÁLISIS SEMÁNTICO EXITOSO: El programa cumple todas las reglas semánticas.\n");
+  } else {
+    console.log("❌ ERRORES SEMÁNTICOS DETECTADOS:");
+    console.table(analyzer.errors);
+    console.log("\n");
   }
 }
 
-// Ejemplo 1: Caso Totalmente Válido
-const validCode = ` 
-program ArrayDemo {
-  int[] numbers = [10, 20, 30];
-  
-  // Acceso a un valor
-  int first = numbers[0];
-  
-  // Modificación mediante asignación por índice
-  numbers[1] = 50;
+// -----------------------------------------------------------------------------
+// CASO 1: Programa Válido (Integra variables, constantes, asignaciones, for e if)
+// -----------------------------------------------------------------------------
+const validCode = `
+program TestValido {
+  const int LIMIT = 5;
+  int count = 0;
+  string msg = "Iteracion:";
 
-  // Lectura con entrada/salida
-  print(numbers[1]);
-}
-`;
+  for (int i = 0; i < LIMIT; i = i + 1) {
+    print(msg);
+    print(i);
+  }
 
-// Ejemplo 2: Error Léxico
-const lexicalErrorCode = `
-program TestErrorLexico {
-  int A = 5 @;
-}
-`;
-
-const syntaxErrorCode = `
-program StackTest {
-  stack<int> numbers;
-  numbers.push(10);
-  
-  while (numbers.size() > 0) {
-    print(numbers.pop());
+  if (count == 0) {
+    print("Conteo inicializado correctamente");
   }
 }
 `;
 
-// Ejecución
-testCompiler("Caso 1: Programa Válido", validCode);
-testCompiler("Caso 2: Error Léxico (@)", lexicalErrorCode);
-testCompiler("Caso 3: Programa Válido. Actualizado con while y tipos de datos", syntaxErrorCode);
+// -----------------------------------------------------------------------------
+// CASO 2: Errores Semánticos Acumulados
+// -----------------------------------------------------------------------------
+const invalidCode = `
+program TestErrores {
+  const int MAX = 100;
+  int x = 10;
+
+  // Error 1: Variable no declarada ('y')
+  y = 20;
+
+  // Error 2: Modificación de constante ('MAX')
+  MAX = 200;
+
+  // Error 3: Condición no booleana en 'if' ('x' es tipo int)
+  if (x) {
+    print("Error");
+  }
+
+  // Error 4: Incompatibilidad de tipos en asignación
+  x = "Hola Mundo";
+
+  // Error 5: Modificación con 'read()' hacia una constante
+  read(MAX);
+}
+`;
+
+// -----------------------------------------------------------------------------
+// CASO 3: Error de Uso de Variables Fuera de Ámbito (Scope Check)
+// -----------------------------------------------------------------------------
+const outOfScopeCode = `
+program TestScope {
+  if (true) {
+    int temp = 42;
+  }
+  // Error: 'temp' fue declarada en el bloque del 'if' y no existe en el ámbito global
+  print(temp);
+}
+`;
+
+// Ejecutar el conjunto de pruebas
+runSemanticTest("Caso 1: Código Semánticamente Válido", validCode);
+runSemanticTest("Caso 2: Múltiples Errores Semánticos", invalidCode);
+runSemanticTest("Caso 3: Variable Fuera de Ámbito (Scope Error)", outOfScopeCode);

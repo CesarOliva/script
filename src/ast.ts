@@ -48,7 +48,7 @@ export interface ForStatementNode {
 
 export interface WhileStatementNode {
     type: "WhileStatement";
-    condition?: ExpressionNode;
+    condition: ExpressionNode;
     body: StatementNode[];
 }
 
