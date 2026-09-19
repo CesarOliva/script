@@ -1,13 +1,11 @@
 import { useMemo, useState } from 'react';
 import { compileSource } from './Analyzer/compiler';
 import { EXAMPLES, EXAMPLE_LABELS } from './Analyzer/examples';
-import AstExplorer from './components/AstExplorer';
-
-type Tab = 'tokens' | 'ast' | 'semantic' | 'symbols';
+import Tabs, { type TabId } from './components/Tabs';
 
 export default function App() {
   const [source, setSource] = useState<string>(EXAMPLES.valido);
-  const [tab, setTab] = useState<Tab>('tokens');
+  const [tab, setTab] = useState<TabId>('tokens');
 
   const result = useMemo(() => compileSource(source), [source]);
 
@@ -57,123 +55,7 @@ export default function App() {
         </section>
 
         <section className="result-panel">
-          <nav className="tabs">
-            {(
-              [
-                ['tokens', `Tokens (${result.tokens.length})`],
-                ['ast', 'AST'],
-                ['semantic', `Semántica (${result.semanticErrors.length})`],
-                ['symbols', `Símbolos (${result.symbols.length})`],
-              ] as [Tab, string][]
-            ).map(([id, label]) => (
-              <button
-                key={id}
-                className={tab === id ? 'tab active' : 'tab'}
-                onClick={() => setTab(id)}
-              >
-                {label}
-              </button>
-            ))}
-          </nav>
-
-          <div className="tab-body">
-            {tab === 'tokens' && (
-              <>
-                {result.lexicalErrors.length > 0 && (
-                  <div className="alert error">
-                    {result.lexicalErrors.map((t, i) => (
-                      <div key={i}>
-                        L{t.line}:{t.column} — {String(t.literal)} ('{t.lexeme}')
-                      </div>
-                    ))}
-                  </div>
-                )}
-                <table>
-                  <thead>
-                    <tr>
-                      <th>#</th>
-                      <th>Tipo</th>
-                      <th>Lexema</th>
-                      <th>L:C</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {result.tokens.map((t, i) => (
-                      <tr key={i} className={String(t.type) === 'ERROR' ? 'row-error' : ''}>
-                        <td>{i}</td>
-                        <td className="mono">{String(t.type)}</td>
-                        <td className="mono">{t.lexeme || '∅'}</td>
-                        <td className="mono">
-                          {t.line}:{t.column}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-                {result.tokens.length === 0 && <p className="empty">Escribí código para ver los tokens.</p>}
-              </>
-            )}
-
-            {tab === 'ast' && (
-              <>
-                {result.syntaxError && <div className="alert error">{result.syntaxError}</div>}
-                {result.ast ? (
-                  <AstExplorer ast={result.ast} />
-                ) : (
-                  !result.syntaxError && <p className="empty">Sin AST (hay errores léxicos o no hay código).</p>
-                )}
-              </>
-            )}
-
-            {tab === 'semantic' && (
-              <>
-                {result.syntaxError && (
-                  <div className="alert error">No se ejecutó el análisis semántico: hay un error sintáctico.</div>
-                )}
-                {!result.syntaxError && result.semanticErrors.length === 0 && result.ast && (
-                  <div className="alert ok">Análisis semántico exitoso: sin errores.</div>
-                )}
-                {result.semanticErrors.map((e, i) => (
-                  <div key={i} className="alert error">
-                    {i + 1}. {e.message}
-                    {e.line !== undefined ? ` (L${e.line}${e.column !== undefined ? `:${e.column}` : ''})` : ''}
-                  </div>
-                ))}
-                {!result.ast && !result.syntaxError && (
-                  <p className="empty">Escribí código para correr el análisis semántico.</p>
-                )}
-              </>
-            )}
-
-            {tab === 'symbols' && (
-              <>
-                {result.symbols.length === 0 ? (
-                  <p className="empty">Sin símbolos globales (¿errores de sintaxis o programa vacío?).</p>
-                ) : (
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>Nombre</th>
-                        <th>Tipo</th>
-                        <th>Kind</th>
-                        <th>Scope</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {result.symbols.map((s, i) => (
-                        <tr key={i}>
-                          <td className="mono">{s.name}</td>
-                          <td className="mono">{s.type}</td>
-                          <td className="mono">{s.kind}</td>
-                          <td className="mono">{s.scope}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                )}
-              </>
-            )}
-          </div>
+          <Tabs activeTab={tab} onTabChange={setTab} result={result} />
         </section>
       </main>
     </div>
