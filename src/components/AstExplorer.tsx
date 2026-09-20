@@ -95,7 +95,7 @@ export default function AstExplorer({ ast }: { ast: ProgramNode }) {
             </div>
 
             {showJson ? (
-                <pre className="bg-[#0a0f1c] border border-[#263145] rounded-xl p-3 text-xs overflow-auto text-slate-200 max-h-[560px]">
+                <pre className="bg-[#0a0f1c] border border-[#263145] rounded-xl p-3 text-xs overflow-auto text-slate-200 max-h-135">
                     {JSON.stringify(ast, null, 2)}
                 </pre>
             ) : (

@@ -222,7 +222,7 @@ export default function AstGraph({ tree, collapsed, onToggle }: AstGraphProps) {
         width="100%"
         height={Math.min(600, height)}
         onDoubleClick={resetZoom}
-        className="block min-h-[360px] cursor-grab active:cursor-grabbing"
+        className="block min-h-90 cursor-grab active:cursor-grabbing"
       >
         <defs>
           <marker

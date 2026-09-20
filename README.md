@@ -70,12 +70,12 @@ script/
 │   ├── components/
 │   │   ├── CodeEditor.tsx       # VSCode-like editor (line numbers + current-line highlight)
 │   │   ├── Tabs.tsx             # Result tabs (tokens / AST / semantic / symbols)
-│   │   ├── AstExplorer.tsx      # AST viewer (graph / list / JSON modes)
-│   │   ├── AstGraph.tsx         # D3-based AST graph
-│   │   └── AstTree.tsx          # Collapsible AST list
+│   │   ├── AstExplorer.tsx      # AST section (header + legend + graph/JSON toggle, owns collapse state)
+│   │   ├── AstGraph.tsx         # D3-based vertical AST graph (controlled component)
+│   │   └── AstTree.tsx          # UiNode builders (toUiTree) + collectKeys/countUiNodes helpers
 │   ├── App.tsx                  # Playground shell (editor + Tabs)
 │   ├── main.tsx                 # React entry point
-│   └── index.css                # Tailwind + legacy panel styles
+│   └── index.css                # Tailwind base (body bg/color + scrollbar + md overflow lock)
 ├── documentation/
 │   ├── 1-Especificacion_LenguajeDeProgramacion.md  # Language spec v0.1
 │   ├── 2-Especificacion_Lexica_Formal.md           # Lexical spec v0.1
@@ -192,7 +192,7 @@ Source Code
 
 ## Current status
 
-> This section is maintained as the project evolves. Last updated: 2026-09-19.
+> This section is maintained as the project evolves. Last updated: 2026-09-20.
 
 | Phase | Status | Notes |
 |---|---|---|
@@ -204,6 +204,48 @@ Source Code
 | 6. Optimizer | ⬜ Not started | Constant folding/propagation, DCE (planned) |
 | 7. JS code generator | ⬜ Not started |  |
 | 8. CLI + test suite | 🟡 Partial | `npm test` harness (`src/tests.ts`) now runs the full lexer → parser → semantic pipeline via `runSemanticTest()` with 3 semantic cases (1 valid + 1 multi-error + 1 scope error); no CLI yet |
+
+### Implemented since the previous README update (2026-09-20 — Tailwind migration + 100vh layout + AST redesign)
+
+- **CSS → Tailwind migration** (`src/index.css`, `src/components/styles.tsx`):
+  `index.css` went from ~195 lines to ~25 (only `@import "tailwindcss"`, base
+  `html/body/#root` sizing, body bg/color, scrollbar styling). All legacy rules
+  (`.layout`, `.header`, `.badge`, `.chip`, `.panels`, `.ast-*`, `.mini-btn`,
+  element selectors like `textarea`) were removed and replaced with Tailwind
+  utilities. Shared patterns were centralized in `styles.tsx`: `badgeClass()`
+  (`ok`/`error`/`neutral`), `miniBtnClass`, `searchInputClass`,
+  `panelBoxClass`, `astPillClass()` (+ `astMetaClass`, `astCountClass`).
+  SVG presentation in `AstGraph` uses element props (`fill`, `stroke`,
+  `fontSize`, `paintOrder`, drop-shadow `filter`) instead of CSS classes.
+- **Viewport-locked layout from `md` up** (`src/App.tsx`, `src/components/Tabs.tsx`,
+  `src/index.css`): below `md` the page scrolls normally; from `md`
+  (`min-width: 768px`) the shell is capped at `100vh` (`md:h-screen
+  md:max-h-screen md:overflow-hidden`, `body { overflow: hidden }`) and scrolling
+  moves inside the panels — editor and tab content are `md:flex-1 md:min-h-0`
+  with internal `overflow-auto` (token/symbol tables, AST canvas).
+- **AST section redesign** (`src/components/AstExplorer.tsx`, `src/components/AstGraph.tsx`,
+  design reference: `referencia.png`):
+  - Section header with violet `⛉` icon, title `Árbol de Sintaxis Abstracta`,
+    subtitle `Representación estructurada del programa.`, and dark action buttons
+    (`↓ Expandir todo`, `↑ Colapsar todo`, `<> JSON` toggle with active state).
+  - Category legend: Programa (blue), Sentencia (green), Expresión (amber),
+    Declaración (violet), Otro (gray) — see `CATEGORY_META` in `AstGraph.tsx`.
+  - Vertical top-down D3 tree (was horizontal) with orthogonal elbow edges +
+    arrow markers, no edge labels. Card nodes (`168×58`, `foreignObject`) with
+    per-category icon/tint/border, short labels (`Program`, `ConstDecl`,
+    `VarDecl`, `Assign`, `For`, `If`, `Block`, `Call`, … via `displayOf()`),
+    truncated subtitles, and a `⌄` chevron for collapsible nodes.
+  - The artificial `Body` wrapper is flattened in the view so `Program` connects
+    directly to the statements; initial state expands to depth 3 (`For → Block →
+    `Call` visible, deeper nodes collapsed). Collapse state is owned by
+    `AstExplorer` and `AstGraph` is a controlled component
+    (`tree` + `collapsed` + `onToggle`); the old graph/list/JSON mode switch and
+    the search box were removed in favor of the reference layout.
+  - Canvas with dotted-grid background (`radial-gradient`), `⛶` fullscreen
+    button, D3 zoom/pan, double-click to reset zoom.
+  - Compact spacing: `DX = 184` (~16 px horizontal air), `DY = 92` (~34 px
+    vertical air) — tune these constants in `AstGraph.tsx` to pack nodes
+    tighter/looser (floors ≈ `DX 176`, `DY 80` before cards touch).
 
 ### Implemented since the previous README update (playground UI — `Tabs` + `CodeEditor`)
 
