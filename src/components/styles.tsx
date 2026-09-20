@@ -62,6 +62,10 @@ export const tokenTypeColors: Record<string, string> = {
     'queue<float>': 'bg-blue-400/20 text-blue-300',
     'queue<string>': 'bg-blue-400/20 text-blue-300',
     'queue<bool>': 'bg-blue-400/20 text-blue-300',
+    'int[]': 'bg-blue-400/20 text-blue-300',
+    'string[]': 'bg-blue-400/20 text-blue-300',
+    'float[]': 'bg-blue-400/20 text-blue-300',
+    'bool[]': 'bg-blue-400/20 text-blue-300',
 
     'if': 'bg-green-400/20 text-green-300',
     'else': 'bg-green-400/20 text-green-300',
