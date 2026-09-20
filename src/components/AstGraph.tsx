@@ -1,50 +1,110 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import * as d3 from 'd3';
-import type { ProgramNode } from '../Analyzer/ast';
-import { toUiTree, type UiNode } from './AstTree';
-import { astMetaClass, miniBtnClass, searchInputClass } from './styles';
+import type { UiNode } from './AstTree';
+
+export type AstCategory = 'program' | 'declaration' | 'statement' | 'expression' | 'other';
 
 interface GNode {
   ui: UiNode;
-  edge: string;
 }
 
-const KIND_FILL: Record<UiNode['kind'], string> = {
-  root: '#1e2b4d',
-  statement: '#123f2a',
-  expression: '#3a2a10',
-  leaf: '#2a2233',
+export const CATEGORY_META: Record<
+  AstCategory,
+  { label: string; dot: string; fill: string; stroke: string; accent: string; icon: string }
+> = {
+  program: {
+    label: 'Programa',
+    dot: '#3b82f6',
+    fill: 'rgba(59, 99, 235, 0.28)',
+    stroke: 'rgba(93, 135, 255, 0.75)',
+    accent: '#7ea2ff',
+    icon: '</>',
+  },
+  declaration: {
+    label: 'Declaración',
+    dot: '#8b5cf6',
+    fill: 'rgba(139, 92, 246, 0.16)',
+    stroke: 'rgba(139, 92, 246, 0.55)',
+    accent: '#a78bfa',
+    icon: '⧉',
+  },
+  statement: {
+    label: 'Sentencia',
+    dot: '#10b981',
+    fill: 'rgba(16, 185, 129, 0.13)',
+    stroke: 'rgba(16, 185, 129, 0.5)',
+    accent: '#34d399',
+    icon: '⬢',
+  },
+  expression: {
+    label: 'Expresión',
+    dot: '#f59e0b',
+    fill: 'rgba(245, 158, 11, 0.13)',
+    stroke: 'rgba(245, 158, 11, 0.5)',
+    accent: '#fbbf24',
+    icon: '⬣',
+  },
+  other: {
+    label: 'Otro',
+    dot: '#64748b',
+    fill: 'rgba(148, 163, 184, 0.12)',
+    stroke: 'rgba(148, 163, 184, 0.45)',
+    accent: '#94a3b8',
+    icon: '●',
+  },
 };
 
-const KIND_STROKE: Record<UiNode['kind'], string> = {
-  root: '#3b5bdb',
-  statement: '#1f7a4d',
-  expression: '#9a6b1f',
-  leaf: '#6d5b8f',
+const DECL_TITLES = new Set(['VariableDeclaration', 'ConstantDeclaration']);
+
+export function categoryOf(title: string): AstCategory {
+  if (title === 'Program' || title.startsWith('Program:')) return 'program';
+  if (DECL_TITLES.has(title)) return 'declaration';
+  if (
+    title === 'Block' ||
+    title === 'Body' ||
+    title === 'Assignment' ||
+    title === 'IfStatement' ||
+    title === 'ForStatement' ||
+    title === 'WhileStatement' ||
+    title === 'PrintStatement' ||
+    title === 'ReadStatement' ||
+    title === 'ExpressionStatement' ||
+    title === 'MethodCall'
+  )
+    return 'statement';
+  if (
+    title === 'BinaryExpression' ||
+    title === 'UnaryExpression' ||
+    title === 'ArrayLiteral' ||
+    title === 'IndexAccess'
+  )
+    return 'expression';
+  return 'other';
+}
+
+const SHORT_LABELS: Record<string, string> = {
+  VariableDeclaration: 'VarDecl',
+  ConstantDeclaration: 'ConstDecl',
+  Assignment: 'Assign',
+  IfStatement: 'If',
+  ForStatement: 'For',
+  WhileStatement: 'While',
+  PrintStatement: 'Call',
+  MethodCall: 'Call',
+  ExpressionStatement: 'Expr',
+  ReadStatement: 'Read',
+  BinaryExpression: 'Binary',
+  UnaryExpression: 'Unary',
+  ArrayLiteral: 'Array',
+  IndexAccess: 'Index',
+  Identifier: 'Ident',
 };
 
-const NODE_W = 190;
-const NODE_H = 50;
-const DX = 240; // separación horizontal
-const DY = 78; // separación vertical
-
-function collectAll(n: UiNode, out: string[] = []): string[] {
-  out.push(n.key);
-  n.children.forEach((c) => collectAll(c.node, out));
-  return out;
-}
-
-function countAll(n: UiNode): number {
-  return 1 + n.children.reduce((a, c) => a + countAll(c.node), 0);
-}
-
-function hiddenCount(n: UiNode, collapsed: Set<string>): number {
-  if (collapsed.has(n.key)) return countAll(n) - 1;
-  return n.children.reduce((a, c) => a + hiddenCount(c.node, collapsed), 0);
-}
-
-function matches(ui: UiNode, q: string): boolean {
-  return `${ui.title} ${ui.subtitle ?? ''} ${ui.kind}`.toLowerCase().includes(q);
+export function displayOf(ui: UiNode): { title: string; subtitle?: string } {
+  if (ui.title.startsWith('Program:')) {
+    return { title: 'Program', subtitle: ui.title.slice('Program:'.length).trim() || ui.subtitle };
+  }
+  return { title: SHORT_LABELS[ui.title] ?? ui.title, subtitle: ui.subtitle };
 }
 
 function truncate(s: string | undefined, n = 24): string {
@@ -52,77 +112,58 @@ function truncate(s: string | undefined, n = 24): string {
   return s.length > n ? `${s.slice(0, n - 1)}…` : s;
 }
 
-export default function AstGraph({ ast }: { ast: ProgramNode }) {
-  const tree = useMemo(() => toUiTree(ast), [ast]);
-  const total = useMemo(() => countAll(tree), [tree]);
+const NODE_W = 168;
+const NODE_H = 58;
+const DX = 184; // separación horizontal entre hermanos
+const DY = 92; // separación vertical entre niveles
+const EDGE_COLOR = '#5a6f93';
 
-  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
-  const [query, setQuery] = useState('');
+interface AstGraphProps {
+  tree: UiNode;
+  collapsed: Set<string>;
+  onToggle: (key: string) => void;
+}
+
+export default function AstGraph({ tree, collapsed, onToggle }: AstGraphProps) {
   const svgRef = useRef<SVGSVGElement | null>(null);
   const gRef = useRef<SVGGElement | null>(null);
+  const boxRef = useRef<HTMLDivElement | null>(null);
   const zoomRef = useRef<d3.ZoomBehavior<SVGSVGElement, unknown> | null>(null);
 
-  // Colapso inicial: profundidad >= 2 colapsada (árbol grande legible).
-  useEffect(() => {
-    const keep = new Set<string>();
-    const visit = (n: UiNode, d: number) => {
-      if (d >= 2) keep.add(n.key);
-      n.children.forEach((c) => visit(c.node, d + 1));
-    };
-    visit(tree, 0);
-    // Pero la raíz y su hijo Body siempre visibles:
-    keep.delete(tree.key);
-    tree.children.forEach((c) => keep.delete(c.node.key));
-    setCollapsed(keep);
-    setQuery('');
-  }, [tree]);
-
-  useEffect(() => {
-    if (query.trim()) setCollapsed(new Set());
-  }, [query]);
-
-  const toggle = (key: string) =>
-    setCollapsed((prev) => {
-      const next = new Set(prev);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
-      return next;
-    });
-
-  // Layout D3 (recalculado al colapsar/buscar)
-  const { nodes, links, width, height } = useMemo(() => {
-    const rootData: GNode = { ui: tree, edge: 'root' };
-    const root = d3.hierarchy<GNode>(rootData, (d) =>
-      collapsed.has(d.ui.key) ? [] : d.ui.children.map((c) => ({ ui: c.node, edge: c.edge })),
+  // Layout vertical D3 (recalculado al colapsar)
+  const { nodes, links, height } = useMemo(() => {
+    const root = d3.hierarchy<GNode>({ ui: tree }, (d) =>
+      collapsed.has(d.ui.key) ? [] : d.ui.children.map((c) => ({ ui: c.node })),
     );
-    const layout = d3.tree<GNode>().nodeSize([DY, DX]);
+    const layout = d3.tree<GNode>().nodeSize([DX, DY]);
     layout(root);
     const desc = root.descendants();
     const lnks = root.links();
     let minX = Infinity;
     let maxX = -Infinity;
-    let maxY = 0;
+    let maxDepth = 0;
     desc.forEach((d) => {
       const x = d.x ?? 0;
-      const y = d.y ?? 0;
+      const depth = d.depth ?? 0;
       if (x < minX) minX = x;
       if (x > maxX) maxX = x;
-      if (y > maxY) maxY = y;
+      if (depth > maxDepth) maxDepth = depth;
     });
     if (!isFinite(minX)) {
       minX = 0;
       maxX = 0;
     }
-    const w = maxY + NODE_W + 120;
-    const h = Math.max(320, maxX - minX + 140);
-    const xOff = -minX + 70;
+    const xOff = -minX + NODE_W / 2 + 48;
     desc.forEach((d) => {
       d.x = (d.x ?? 0) + xOff;
+      d.y = (d.depth ?? 0) * DY + 70;
     });
-    return { nodes: desc, links: lnks, width: w, height: h };
+    void maxX;
+    const h = Math.max(360, maxDepth * DY + NODE_H + 140);
+    return { nodes: desc, links: lnks, height: h };
   }, [tree, collapsed]);
 
-  // Zoom / pan con D3
+  // Zoom / pan con D3 (doble clic = centrar)
   useEffect(() => {
     const el = svgRef.current;
     const g = gRef.current;
@@ -130,12 +171,13 @@ export default function AstGraph({ ast }: { ast: ProgramNode }) {
     const svg = d3.select(el);
     const zoom = d3
       .zoom<SVGSVGElement, unknown>()
-      .scaleExtent([0.25, 2.5])
+      .scaleExtent([0.3, 2.2])
       .on('zoom', (e) => {
         d3.select(g).attr('transform', e.transform.toString());
       });
     zoomRef.current = zoom;
     svg.call(zoom);
+    svg.on('dblclick.zoom', null);
     return () => {
       svg.on('.zoom', null);
     };
@@ -149,191 +191,172 @@ export default function AstGraph({ ast }: { ast: ProgramNode }) {
     (t as any).call(zoomRef.current.transform, d3.zoomIdentity);
   };
 
-  const q = query.trim().toLowerCase();
-  const linkGen = useMemo(
-    () =>
-      d3
-        .linkHorizontal()
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        .x((d: any) => d.y)
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        .y((d: any) => d.x),
-    [],
-  );
+  const goFullscreen = () => {
+    const box = boxRef.current;
+    if (!box) return;
+    if (document.fullscreenElement) {
+      void document.exitFullscreen();
+    } else {
+      void box.requestFullscreen?.();
+    }
+  };
 
   return (
-    <div className="flex flex-col gap-2">
-      <div className="flex flex-col gap-2">
-        <input
-          className={searchInputClass}
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Resaltar nodos… (ej. BinaryExpression, cond, push)"
-        />
-        <div className="flex gap-2 flex-wrap">
-          <button className={miniBtnClass} onClick={() => setCollapsed(new Set())}>
-            Expandir todo
-          </button>
-          <button
-            className={miniBtnClass}
-            onClick={() => setCollapsed(new Set(collectAll(tree)))}
+    <div
+      ref={boxRef}
+      className="relative rounded-xl border border-[#263145] overflow-auto bg-[#0a0f1c]"
+      style={{
+        backgroundImage: 'radial-gradient(rgba(148, 163, 184, 0.16) 1px, transparent 1px)',
+        backgroundSize: '18px 18px',
+      }}
+    >
+      <button
+        onClick={goFullscreen}
+        title="Pantalla completa"
+        className="absolute top-2 right-2 z-10 rounded-md border border-[#2c3a52] bg-[#111a2c]/90 px-2 py-1 text-xs text-slate-300 hover:bg-[#1a2540] cursor-pointer"
+      >
+        ⛶
+      </button>
+      <svg
+        ref={svgRef}
+        width="100%"
+        height={Math.min(600, height)}
+        onDoubleClick={resetZoom}
+        className="block min-h-[360px] cursor-grab active:cursor-grabbing"
+      >
+        <defs>
+          <marker
+            id="ast-arrow"
+            viewBox="0 0 10 10"
+            refX="8"
+            refY="5"
+            markerWidth="7"
+            markerHeight="7"
+            orient="auto-start-reverse"
           >
-            Colapsar todo
-          </button>
-          <button className={miniBtnClass} onClick={resetZoom}>
-            Centrar
-          </button>
-        </div>
-      </div>
-      <div className={astMetaClass}>
-        {total} nodo(s) · {nodes.length} visibles · {total - nodes.length} ocultos · arrastra
-        para pan · rueda para zoom · clic en nodo para colapsar/expandir
-      </div>
-
-      <div className="flex gap-3 flex-wrap text-xs text-[#9aa4b2]">
-        {(
-          [
-            ['root', 'Program'],
-            ['statement', 'Sentencia'],
-            ['expression', 'Expresión'],
-            ['leaf', 'Hoja'],
-          ] as const
-        ).map(([k, label]) => (
-          <span key={k} className="flex items-center gap-1.5">
-            <span
-              className="w-3 h-3 rounded border inline-block"
-              style={{ background: KIND_FILL[k], borderColor: KIND_STROKE[k] }}
-            />
-            {label}
-          </span>
-        ))}
-      </div>
-
-      <div className="bg-[#0b0f16] border border-[#2b3850] rounded-lg overflow-auto">
-        <svg
-          ref={svgRef}
-          width="100%"
-          height={Math.min(560, height)}
-          className="block min-h-[320px] cursor-grab active:cursor-grabbing"
-        >
-          <g ref={gRef}>
-            {links.map((l, i) => {
-              const s = l.source as d3.HierarchyPointNode<GNode>;
-              const t = l.target as d3.HierarchyPointNode<GNode>;
-              const sx = s.x ?? 0;
-              const sy = s.y ?? 0;
-              const tx = t.x ?? 0;
-              const ty = t.y ?? 0;
-              const mx = (sx + tx) / 2;
-              const my = (sy + ty) / 2;
-              return (
-                <g key={i}>
-                  <path
-                    d={linkGen(l as never) ?? ''}
-                    fill="none"
-                    stroke="#3b4a63"
-                    strokeWidth={1.5}
-                  />
-                  <text
-                    x={my}
-                    y={mx - 6}
-                    textAnchor="middle"
-                    fill="#7d8aa0"
-                    fontSize={10}
-                    fontFamily="Consolas, monospace"
-                    stroke="#0b0f16"
-                    strokeWidth={3}
-                    paintOrder="stroke"
-                  >
-                    {(t.data as GNode).edge}
-                  </text>
-                </g>
-              );
-            })}
-            {nodes.map((d, i) => {
-              const g = d.data as GNode;
-              const isCollapsed = collapsed.has(g.ui.key);
-              const hasKids = g.ui.children.length > 0;
-              const hidden = hasKids ? hiddenCount(g.ui, collapsed) : 0;
-              const hit = q ? matches(g.ui, q) : false;
-              return (
-                <g
-                  key={`${g.ui.key}-${i}`}
-                  transform={`translate(${d.y ?? 0},${d.x ?? 0})`}
-                  onClick={() => hasKids && toggle(g.ui.key)}
-                  className={hasKids ? 'cursor-pointer' : undefined}
-                  style={
-                    hit
-                      ? { filter: 'drop-shadow(0 0 6px rgba(255,255,255,0.6))' }
-                      : undefined
-                  }
+            <path d="M0,0 L10,5 L0,10 z" fill={EDGE_COLOR} />
+          </marker>
+        </defs>
+        <g ref={gRef}>
+          {links.map((l, i) => {
+            const s = l.source as d3.HierarchyPointNode<GNode>;
+            const t = l.target as d3.HierarchyPointNode<GNode>;
+            const sx = s.x ?? 0;
+            const sy = (s.y ?? 0) + NODE_H / 2;
+            const tx = t.x ?? 0;
+            const ty = (t.y ?? 0) - NODE_H / 2;
+            const midY = (sy + ty) / 2;
+            return (
+              <path
+                key={i}
+                d={`M ${sx},${sy} V ${midY} H ${tx} V ${ty}`}
+                fill="none"
+                stroke={EDGE_COLOR}
+                strokeWidth={1.5}
+                markerEnd="url(#ast-arrow)"
+              />
+            );
+          })}
+          {nodes.map((d, i) => {
+            const g = d.data as GNode;
+            const meta = CATEGORY_META[categoryOf(g.ui.title)];
+            const { title, subtitle } = displayOf(g.ui);
+            const isCollapsed = collapsed.has(g.ui.key);
+            const hasKids = g.ui.children.length > 0;
+            return (
+              <g
+                key={`${g.ui.key}-${i}`}
+                transform={`translate(${d.x ?? 0},${d.y ?? 0})`}
+                onClick={() => hasKids && onToggle(g.ui.key)}
+                className={hasKids ? 'cursor-pointer' : undefined}
+              >
+                <rect
+                  x={-NODE_W / 2}
+                  y={-NODE_H / 2}
+                  width={NODE_W}
+                  height={NODE_H}
+                  rx={10}
+                  fill={meta.fill}
+                  stroke={meta.stroke}
+                  strokeWidth={1.5}
+                  strokeDasharray={isCollapsed ? '5 4' : undefined}
+                />
+                <foreignObject
+                  x={-NODE_W / 2}
+                  y={-NODE_H / 2}
+                  width={NODE_W}
+                  height={NODE_H}
                 >
-                  <rect
-                    x={-NODE_W / 2}
-                    y={-NODE_H / 2}
-                    width={NODE_W}
-                    height={NODE_H}
-                    rx={10}
-                    fill={KIND_FILL[g.ui.kind]}
-                    stroke={hit ? '#ffffff' : KIND_STROKE[g.ui.kind]}
-                    strokeWidth={hit ? 2.5 : 1.5}
-                    strokeDasharray={isCollapsed ? '6 4' : undefined}
-                  />
-                  <text
-                    textAnchor="middle"
-                    y={-6}
-                    fill="#fff"
-                    fontSize={11}
-                    fontWeight={700}
-                    fontFamily="Consolas, monospace"
+                  <div
+                    style={{
+                      width: NODE_W,
+                      height: NODE_H,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 8,
+                      padding: '0 10px',
+                      fontFamily: 'Inter, system-ui, sans-serif',
+                    }}
                   >
-                    {truncate(g.ui.title, 26)}
-                  </text>
-                  {(g.ui.subtitle || hasKids) && (
-                    <text
-                      textAnchor="middle"
-                      y={11}
-                      fill="#c3cede"
-                      fontSize={10}
-                      fontFamily="Consolas, monospace"
+                    <span
+                      style={{
+                        color: meta.accent,
+                        fontSize: 15,
+                        lineHeight: 1,
+                        flexShrink: 0,
+                      }}
                     >
-                      {truncate(
-                        g.ui.subtitle ?? `${g.ui.children.length} hijo(s)`,
-                        26,
-                      )}
-                    </text>
-                  )}
-                  {hasKids && (
-                    <g transform={`translate(${NODE_W / 2 - 2},${-NODE_H / 2 + 2})`}>
-                      <circle r={11} fill="#2563eb" stroke="#dbeafe" strokeWidth={1} />
-                      <text
-                        textAnchor="middle"
-                        dy={4}
-                        fill="#fff"
-                        fontSize={11}
-                        fontWeight={800}
+                      {meta.icon}
+                    </span>
+                    <span style={{ flex: 1, minWidth: 0 }}>
+                      <span
+                        style={{
+                          display: 'block',
+                          color: '#fff',
+                          fontSize: 13,
+                          fontWeight: 700,
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                        }}
                       >
-                        {isCollapsed ? `+${g.ui.children.length}` : '–'}
-                      </text>
-                    </g>
-                  )}
-                  {hidden > 0 && isCollapsed && (
-                    <text
-                      textAnchor="middle"
-                      y={NODE_H / 2 + 14}
-                      fill="#7d8aa0"
-                      fontSize={10}
-                    >
-                      {hidden} oculto(s)
-                    </text>
-                  )}
-                </g>
-              );
-            })}
-          </g>
-        </svg>
-      </div>
-      <span style={{ display: 'none' }}>{width}x{height}</span>
+                        {truncate(title, 18)}
+                      </span>
+                      {subtitle && (
+                        <span
+                          style={{
+                            display: 'block',
+                            color: '#c3cede',
+                            fontSize: 11,
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                          }}
+                        >
+                          {truncate(subtitle, 24)}
+                        </span>
+                      )}
+                    </span>
+                    {hasKids && (
+                      <span
+                        style={{
+                          color: '#8b96a8',
+                          fontSize: 12,
+                          flexShrink: 0,
+                          transform: isCollapsed ? 'rotate(-90deg)' : undefined,
+                          transition: 'transform 0.15s',
+                        }}
+                      >
+                        ⌄
+                      </span>
+                    )}
+                  </div>
+                </foreignObject>
+              </g>
+            );
+          })}
+        </g>
+      </svg>
     </div>
   );
 }

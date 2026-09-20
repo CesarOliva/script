@@ -201,10 +201,14 @@ function countNodes(n: UiNode): number {
   return 1 + n.children.reduce((acc, c) => acc + countNodes(c.node), 0);
 }
 
-function collectKeys(n: UiNode, out: string[] = []): string[] {
+export function collectKeys(n: UiNode, out: string[] = []): string[] {
   out.push(n.key);
   n.children.forEach((c) => collectKeys(c.node, out));
   return out;
+}
+
+export function countUiNodes(n: UiNode): number {
+  return 1 + n.children.reduce((acc, c) => acc + countUiNodes(c.node), 0);
 }
 
 function matches(n: UiNode, q: string): boolean {
