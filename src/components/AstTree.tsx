@@ -1,4 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
+import {
+  astCountClass,
+  astMetaClass,
+  astPillClass,
+  miniBtnClass,
+  panelBoxClass,
+  searchInputClass,
+} from './styles';
 import type {
   ASTNode,
   ExpressionNode,
@@ -225,28 +233,34 @@ function TreeItem({
     query.trim().length > 0 && matches(node, query.trim().toLowerCase());
 
   return (
-    <div className={`ast-item${hit ? ' hit' : ''}`}>
-      <div className="ast-row" style={{ marginLeft: depth === 0 ? 0 : undefined }}>
+    <div>
+      <div
+        className={`flex items-center gap-2 px-1 py-[3px] flex-wrap rounded-md ${
+          hit ? 'bg-blue-600/20' : ''
+        }`}
+      >
         {hasKids ? (
           <button
-            className="ast-toggle"
+            className="w-[22px] h-[22px] rounded-md border border-[#2c3a52] bg-[#1a2230] text-[#c9d3e0] cursor-pointer leading-none"
             onClick={() => toggle(node.key)}
             aria-label={isCollapsed ? 'Expandir' : 'Colapsar'}
           >
             {isCollapsed ? '▸' : '▾'}
           </button>
         ) : (
-          <span className="ast-leaf-dot">•</span>
+          <span className="text-[#3f4f6d] w-[22px] text-center">•</span>
         )}
-        <span className="ast-edge">{edge}</span>
-        <span className={`ast-pill ${node.kind}`}>{node.title}</span>
-        {node.subtitle && <span className="ast-sub">{node.subtitle}</span>}
+        <span className="text-[#7d8aa0] font-mono text-xs min-w-[52px]">{edge}</span>
+        <span className={astPillClass(node.kind)}>{node.title}</span>
+        {node.subtitle && (
+          <span className="text-[#aeb9ca] font-mono text-xs">{node.subtitle}</span>
+        )}
         {hasKids && (
-          <span className="ast-count">{node.children.length}</span>
+          <span className={astCountClass}>{node.children.length}</span>
         )}
       </div>
       {hasKids && !isCollapsed && (
-        <div className="ast-kids">
+        <div className="ml-[11px] pl-3 border-l border-dashed border-[#2c3a52]">
           {node.children.map((c) => (
             <TreeItem
               key={c.node.key}
@@ -303,37 +317,39 @@ export default function AstTree({ ast }: { ast: ProgramNode }) {
   const raw: ASTNode = ast;
 
   return (
-    <div className="ast-wrap">
-      <div className="ast-toolbar">
+    <div className="flex flex-col gap-2">
+      <div className="flex flex-col gap-2">
         <input
-          className="ast-search"
+          className={searchInputClass}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Filtrar nodos… (ej. IfStatement, push)"
         />
-        <div className="ast-actions">
-          <button className="mini-btn" onClick={() => setCollapsed(new Set())}>
+        <div className="flex gap-2 flex-wrap">
+          <button className={miniBtnClass} onClick={() => setCollapsed(new Set())}>
             Expandir todo
           </button>
           <button
-            className="mini-btn"
+            className={miniBtnClass}
             onClick={() => setCollapsed(new Set(allKeys))}
           >
             Colapsar todo
           </button>
-          <button className="mini-btn" onClick={() => setShowJson((v) => !v)}>
+          <button className={miniBtnClass} onClick={() => setShowJson((v) => !v)}>
             {showJson ? 'Ver árbol' : 'Ver JSON'}
           </button>
         </div>
       </div>
-      <div className="ast-meta">
+      <div className={astMetaClass}>
         {total} nodo(s) · {collapsed.size} colapsado(s)
       </div>
 
       {showJson ? (
-        <pre>{JSON.stringify(raw, null, 2)}</pre>
+        <pre className="bg-[#0b0f16] border border-[#2b3850] rounded-lg p-3 text-xs overflow-auto">
+          {JSON.stringify(raw, null, 2)}
+        </pre>
       ) : (
-        <div className="ast-tree">
+        <div className={`${panelBoxClass} px-2.5 py-2.5 text-[13px]`}>
           {/* raíz sin edge */}
           <TreeItem
             edge="root"

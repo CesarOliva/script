@@ -1,4 +1,4 @@
-export const EXAMPLES: Record<string, string> = {
+export const codeExamples: Record<string, string> = {
 valido: `program TestValido {
     const int LIMIT = 5;
     int count = 0;
@@ -63,7 +63,7 @@ stack: `program StackTest {
 }`,
 };
 
-export const EXAMPLE_LABELS: Record<string, string> = {
+export const codeExamplesLabels: Record<string, string> = {
     valido: 'Válido',
     errores: 'Errores semánticos',
     scope: 'Scope',

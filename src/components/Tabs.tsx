@@ -1,5 +1,6 @@
 import type { CompileResult } from '../Analyzer/compiler';
 import AstExplorer from './AstExplorer';
+import { buttonClass, alertError,  thClass, tdClass, alertOk, emptyText, alertInfo} from './styles';
 
 export type TabId = 'tokens' | 'ast' | 'semantic' | 'symbols';
 
@@ -16,22 +17,6 @@ const TABS: { id: TabId; getLabel: (result: CompileResult) => string }[] = [
     { id: 'symbols', getLabel: (r) => `Símbolos (${r.symbols.length})` },
 ];
 
-function tabButtonClass(isActive: boolean): string {
-    const base = 'rounded-md border px-4 py-2 text-sm cursor-pointer transition-colors font-[500]';
-
-    return isActive
-        ? `${base} bg-blue-600 border-blue-600 text-white`
-        : `${base} bg-transparent border-[#2c3a52] text-[#aeb9ca] hover:bg-[#223052] hover:text-white`;
-}
-
-const alertBase = 'rounded-lg px-3 py-2.5 mb-2 text-[13px] border';
-const alertError = `${alertBase} bg-[rgba(255,90,90,0.1)] border-[#8f2b33] text-[#ffb4b4]`;
-const alertOk = `${alertBase} bg-[rgba(60,220,130,0.1)] border-[#1f7a4d] text-[#7df0ab]`;
-const emptyText = 'text-[#8b96a8] text-sm';
-
-const thClass = 'text-left px-2 py-1.5 border-b border-[#223047] text-[#8b96a8] font-semibold';
-const tdClass = 'text-left px-2 py-1.5 border-b border-[#223047] font-[600]';
-
 const tokenTypeColors: Record<string, string> = {
     'program': 'bg-purple-400/20 text-purple-300',
 
@@ -40,7 +25,15 @@ const tokenTypeColors: Record<string, string> = {
     'bool': 'bg-blue-400/20 text-blue-300',
     'string': 'bg-blue-400/20 text-blue-300',
     'stack': 'bg-blue-400/20 text-blue-300',
+    'stack<int>': 'bg-blue-400/20 text-blue-300',
+    'stack<float>': 'bg-blue-400/20 text-blue-300',
+    'stack<string>': 'bg-blue-400/20 text-blue-300',
+    'stack<bool>': 'bg-blue-400/20 text-blue-300',
     'queue': 'bg-blue-400/20 text-blue-300',
+    'queue<int>': 'bg-blue-400/20 text-blue-300',
+    'queue<float>': 'bg-blue-400/20 text-blue-300',
+    'queue<string>': 'bg-blue-400/20 text-blue-300',
+    'queue<bool>': 'bg-blue-400/20 text-blue-300',
 
     'if': 'bg-green-400/20 text-green-300',
     'else': 'bg-green-400/20 text-green-300',
@@ -93,12 +86,12 @@ export default function Tabs({ activeTab, onTabChange, result }: TabsProps) {
     const hasSemanticErrors = result.semanticErrors.length > 0;
 
     return (
-        <div>
-            <nav className="flex gap-2 mb-3 flex-wrap">
+        <section className="md:col-span-5 bg-white/[0.02] border border-[#263145] rounded-xl flex flex-col min-h-[540px] md:min-h-0 md:flex-1 md:overflow-hidden lg:h-full">
+            <nav className="flex gap-2 my-3 flex-wrap px-4 shrink-0">
                 {TABS.map(({ id, getLabel }) => (
                     <button
                         key={id}
-                        className={tabButtonClass(activeTab === id)}
+                        className={buttonClass(activeTab === id)}
                         onClick={() => onTabChange(id)}
                     >
                         {getLabel(result)}
@@ -106,7 +99,7 @@ export default function Tabs({ activeTab, onTabChange, result }: TabsProps) {
                 ))}
             </nav>
 
-            <div className="overflow-auto max-h-[520px]">
+            <div className="rounded-b-lg border-t border-[#223047] overflow-auto max-h-[520px] md:max-h-none md:flex-1 md:min-h-0">
                 {activeTab === 'tokens' && (
                     <>
                         {result.lexicalErrors.length > 0 && (
@@ -118,38 +111,48 @@ export default function Tabs({ activeTab, onTabChange, result }: TabsProps) {
                                 ))}
                             </div>
                         )}
-                        <table className="w-full border-collapse text-[13px]">
-                            <thead>
-                                <tr>
-                                    <th className={thClass}>#</th>
-                                    <th className={thClass}>Tipo</th>
-                                    <th className={thClass}>Lexema</th>
-                                    <th className={thClass}>Ubicación</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {result.tokens.map((t, i) => (
-                                    <tr
-                                        key={i}
-                                        className={String(t.type) === 'ERROR' ? 'bg-[rgba(255,80,80,0.08)]' : ''}
-                                    >
-                                        <td className={tdClass}>{i}</td>
-                                        <td className={`${tdClass} font-mono`}>
-                                            <div className={`inline-flex border border-neutral-50/30 rounded-md py-1 px-2 ${tokenTypeColors[String(t.type)] || ''}`}>
-                                                {String(t.type)}
-                                            </div>
-                                        </td>
-                                        <td className={`${tdClass} font-mono`}>{t.lexeme || '∅'}</td>
-                                        <td className={`${tdClass} font-mono`}>{t.line}:{t.column}</td>
+                        {result.tokens.length === 0 ? (
+                            <div className="p-4">
+                                <div className={alertInfo}>
+                                    <p className={emptyText}>
+                                        Sin símbolos: escribe código para generarlos.
+                                    </p>
+                                </div>
+                            </div>
+                        ): (
+                            <table className="relative w-full border-collapse text-[13px]">
+                                <thead className="sticky top-0 left-0 w-full bg-[#233148]/30 backdrop-blur-sm z-10">
+                                    <tr>
+                                        <th className={thClass}>#</th>
+                                        <th className={thClass}>Tipo</th>
+                                        <th className={thClass}>Lexema</th>
+                                        <th className={thClass}>Ubicación</th>
                                     </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                                </thead>
+                                <tbody>
+                                    {result.tokens.map((t, i) => (
+                                        <tr
+                                            key={i}
+                                            className={String(t.type) === 'ERROR' ? 'bg-[rgba(255,80,80,0.08)]' : ''}
+                                        >
+                                            <td className={tdClass}>{i}</td>
+                                            <td className={`${tdClass} font-mono`}>
+                                                <div className={`inline-flex border border-neutral-50/30 rounded-md py-1 px-2 ${tokenTypeColors[String(t.type)] || ''}`}>
+                                                    {String(t.type)}
+                                                </div>
+                                            </td>
+                                            <td className={`${tdClass} font-mono`}>{t.lexeme || '∅'}</td>
+                                            <td className={`${tdClass} font-mono`}>{t.line}:{t.column}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        )}
                     </>
                 )}
 
                 {activeTab === 'ast' && (
-                    <>
+                    <div className="p-4">
                         {(hasLexicalError || hasSyntaxError) && (
                             <div className={alertError}>
                                 No se puede mostrar el AST: hay errores en fases previas.
@@ -161,14 +164,16 @@ export default function Tabs({ activeTab, onTabChange, result }: TabsProps) {
                         ) : (
                             !hasLexicalError &&
                             !hasSyntaxError && (
-                                <p className={emptyText}>Sin AST: escribí código para generarlo.</p>
+                                <div className={alertInfo}>
+                                    <p className={emptyText}>Sin AST: escribe código para generarlo.</p>
+                                </div>
                             )
                         )}
-                    </>
+                    </div>
                 )}
 
                 {activeTab === 'semantic' && (
-                    <>
+                    <div className="p-4">
                         {(hasLexicalError || hasSyntaxError) && (
                             <div className={alertError}>
                                 No se puede mostrar el análisis semántico: hay errores en fases previas.
@@ -194,48 +199,58 @@ export default function Tabs({ activeTab, onTabChange, result }: TabsProps) {
                             ))}
 
                         {!result.ast && !hasSyntaxError && !hasLexicalError && (
-                            <p className={emptyText}>
-                                Escribe código para correr el análisis semántico.
-                            </p>
+                            <div className={alertInfo}>
+                                <p className={emptyText}>
+                                    Escribe código para correr el análisis semántico.
+                                </p>
+                            </div>
                         )}
-                    </>
+                    </div>
                 )}
 
                 {activeTab === 'symbols' && (
-                <>
-                    {(hasLexicalError || hasSyntaxError || hasSemanticErrors) ? (
-                        <div className={alertError}>
-                            No se pueden mostrar los símbolos: hay errores en fases previas.
-                        </div>
-                    ) : result.symbols.length === 0 ? (
-                        <p className={emptyText}>
-                            Sin símbolos: escribe código para generarlos.
-                        </p>
-                    ) : (
-                        <table className="w-full border-collapse text-[13px]">
-                            <thead>
-                            <tr>
-                                <th className={thClass}>Nombre</th>
-                                <th className={thClass}>Tipo</th>
-                                <th className={thClass}>Kind</th>
-                                <th className={thClass}>Scope</th>
-                            </tr>
-                            </thead>
-                            <tbody>
-                            {result.symbols.map((s, i) => (
-                                <tr key={i}>
-                                <td className={`${tdClass} font-mono`}>{s.name}</td>
-                                <td className={`${tdClass} font-mono`}>{s.type}</td>
-                                <td className={`${tdClass} font-mono`}>{s.kind}</td>
-                                <td className={`${tdClass} font-mono`}>{s.scope}</td>
-                                </tr>
-                            ))}
-                            </tbody>
-                        </table>
-                    )}
-                </>
+                    <div>
+                        {(hasLexicalError || hasSyntaxError || hasSemanticErrors) ? (
+                            <div className={alertError}>
+                                No se pueden mostrar los símbolos: hay errores en fases previas.
+                            </div>
+                        ) : result.symbols.length === 0 ? (
+                            <div className="p-4">
+                                <div className={alertInfo}>
+                                    <p className={emptyText}>
+                                        Sin símbolos: escribe código para generarlos.
+                                    </p>
+                                </div>
+                            </div>
+                        ) : (
+                            <table className="relative w-full border-collapse text-[13px]">
+                                <thead className="sticky top-0 left-0 w-full bg-[#1f2a3c]/90 backdrop-blur-sm z-10">
+                                    <tr>
+                                        <th className={thClass}>Nombre</th>
+                                        <th className={thClass}>Tipo</th>
+                                        <th className={thClass}>Kind</th>
+                                        <th className={thClass}>Scope</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {result.symbols.map((s, i) => (
+                                        <tr key={i}>
+                                            <td className={`${tdClass} font-mono`}>{s.name}</td>
+                                            <td className={`${tdClass} font-mono`}>
+                                                <div className={`inline-flex border border-neutral-50/30 rounded-md py-1 px-2 ${tokenTypeColors[String(s.type)] || ''}`}>
+                                                    {String(s.type)}
+                                                </div>
+                                            </td>
+                                            <td className={`${tdClass} font-mono`}>{s.kind}</td>
+                                            <td className={`${tdClass} font-mono`}>{s.scope}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        )}
+                    </div>
                 )}
             </div>
-        </div>
+        </section>
     );
 }

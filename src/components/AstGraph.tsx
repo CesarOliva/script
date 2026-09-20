@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import * as d3 from 'd3';
 import type { ProgramNode } from '../Analyzer/ast';
 import { toUiTree, type UiNode } from './AstTree';
+import { astMetaClass, miniBtnClass, searchInputClass } from './styles';
 
 interface GNode {
   ui: UiNode;
@@ -161,35 +162,35 @@ export default function AstGraph({ ast }: { ast: ProgramNode }) {
   );
 
   return (
-    <div className="ast-wrap">
-      <div className="ast-toolbar">
+    <div className="flex flex-col gap-2">
+      <div className="flex flex-col gap-2">
         <input
-          className="ast-search"
+          className={searchInputClass}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Resaltar nodos… (ej. BinaryExpression, cond, push)"
         />
-        <div className="ast-actions">
-          <button className="mini-btn" onClick={() => setCollapsed(new Set())}>
+        <div className="flex gap-2 flex-wrap">
+          <button className={miniBtnClass} onClick={() => setCollapsed(new Set())}>
             Expandir todo
           </button>
           <button
-            className="mini-btn"
+            className={miniBtnClass}
             onClick={() => setCollapsed(new Set(collectAll(tree)))}
           >
             Colapsar todo
           </button>
-          <button className="mini-btn" onClick={resetZoom}>
+          <button className={miniBtnClass} onClick={resetZoom}>
             Centrar
           </button>
         </div>
       </div>
-      <div className="ast-meta">
+      <div className={astMetaClass}>
         {total} nodo(s) · {nodes.length} visibles · {total - nodes.length} ocultos · arrastra
         para pan · rueda para zoom · clic en nodo para colapsar/expandir
       </div>
 
-      <div className="ast-legend">
+      <div className="flex gap-3 flex-wrap text-xs text-[#9aa4b2]">
         {(
           [
             ['root', 'Program'],
@@ -198,9 +199,9 @@ export default function AstGraph({ ast }: { ast: ProgramNode }) {
             ['leaf', 'Hoja'],
           ] as const
         ).map(([k, label]) => (
-          <span key={k} className="ast-legend-item">
+          <span key={k} className="flex items-center gap-1.5">
             <span
-              className="ast-legend-dot"
+              className="w-3 h-3 rounded border inline-block"
               style={{ background: KIND_FILL[k], borderColor: KIND_STROKE[k] }}
             />
             {label}
@@ -208,8 +209,13 @@ export default function AstGraph({ ast }: { ast: ProgramNode }) {
         ))}
       </div>
 
-      <div className="ast-graph-scroll">
-        <svg ref={svgRef} width="100%" height={Math.min(560, height)} className="ast-svg">
+      <div className="bg-[#0b0f16] border border-[#2b3850] rounded-lg overflow-auto">
+        <svg
+          ref={svgRef}
+          width="100%"
+          height={Math.min(560, height)}
+          className="block min-h-[320px] cursor-grab active:cursor-grabbing"
+        >
           <g ref={gRef}>
             {links.map((l, i) => {
               const s = l.source as d3.HierarchyPointNode<GNode>;
@@ -222,8 +228,23 @@ export default function AstGraph({ ast }: { ast: ProgramNode }) {
               const my = (sy + ty) / 2;
               return (
                 <g key={i}>
-                  <path d={linkGen(l as never) ?? ''} className="ast-link" />
-                  <text x={my} y={mx - 6} textAnchor="middle" className="ast-link-label">
+                  <path
+                    d={linkGen(l as never) ?? ''}
+                    fill="none"
+                    stroke="#3b4a63"
+                    strokeWidth={1.5}
+                  />
+                  <text
+                    x={my}
+                    y={mx - 6}
+                    textAnchor="middle"
+                    fill="#7d8aa0"
+                    fontSize={10}
+                    fontFamily="Consolas, monospace"
+                    stroke="#0b0f16"
+                    strokeWidth={3}
+                    paintOrder="stroke"
+                  >
                     {(t.data as GNode).edge}
                   </text>
                 </g>
@@ -240,7 +261,12 @@ export default function AstGraph({ ast }: { ast: ProgramNode }) {
                   key={`${g.ui.key}-${i}`}
                   transform={`translate(${d.y ?? 0},${d.x ?? 0})`}
                   onClick={() => hasKids && toggle(g.ui.key)}
-                  className={`ast-gnode${hasKids ? ' clickable' : ''}${hit ? ' hit' : ''}`}
+                  className={hasKids ? 'cursor-pointer' : undefined}
+                  style={
+                    hit
+                      ? { filter: 'drop-shadow(0 0 6px rgba(255,255,255,0.6))' }
+                      : undefined
+                  }
                 >
                   <rect
                     x={-NODE_W / 2}
@@ -253,11 +279,24 @@ export default function AstGraph({ ast }: { ast: ProgramNode }) {
                     strokeWidth={hit ? 2.5 : 1.5}
                     strokeDasharray={isCollapsed ? '6 4' : undefined}
                   />
-                  <text textAnchor="middle" y={-6} className="ast-gtitle">
+                  <text
+                    textAnchor="middle"
+                    y={-6}
+                    fill="#fff"
+                    fontSize={11}
+                    fontWeight={700}
+                    fontFamily="Consolas, monospace"
+                  >
                     {truncate(g.ui.title, 26)}
                   </text>
                   {(g.ui.subtitle || hasKids) && (
-                    <text textAnchor="middle" y={11} className="ast-gsub">
+                    <text
+                      textAnchor="middle"
+                      y={11}
+                      fill="#c3cede"
+                      fontSize={10}
+                      fontFamily="Consolas, monospace"
+                    >
                       {truncate(
                         g.ui.subtitle ?? `${g.ui.children.length} hijo(s)`,
                         26,
@@ -266,14 +305,25 @@ export default function AstGraph({ ast }: { ast: ProgramNode }) {
                   )}
                   {hasKids && (
                     <g transform={`translate(${NODE_W / 2 - 2},${-NODE_H / 2 + 2})`}>
-                      <circle r={11} className="ast-badge" />
-                      <text textAnchor="middle" dy={4} className="ast-badge-text">
+                      <circle r={11} fill="#2563eb" stroke="#dbeafe" strokeWidth={1} />
+                      <text
+                        textAnchor="middle"
+                        dy={4}
+                        fill="#fff"
+                        fontSize={11}
+                        fontWeight={800}
+                      >
                         {isCollapsed ? `+${g.ui.children.length}` : '–'}
                       </text>
                     </g>
                   )}
                   {hidden > 0 && isCollapsed && (
-                    <text textAnchor="middle" y={NODE_H / 2 + 14} className="ast-hidden">
+                    <text
+                      textAnchor="middle"
+                      y={NODE_H / 2 + 14}
+                      fill="#7d8aa0"
+                      fontSize={10}
+                    >
                       {hidden} oculto(s)
                     </text>
                   )}

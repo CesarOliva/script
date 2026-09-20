@@ -10,7 +10,7 @@ export default function AstExplorer({ ast }: { ast: ProgramNode }) {
 
   return (
     <div>
-      <div className="ast-actions" style={{ marginBottom: 10 }}>
+      <div className="flex gap-2 flex-wrap mb-2.5">
         {(
           [
             ['graph', 'Grafo D3'],
@@ -36,7 +36,11 @@ export default function AstExplorer({ ast }: { ast: ProgramNode }) {
       </div>
       {mode === 'graph' && <AstGraph ast={ast} />}
       {mode === 'list' && <AstTree ast={ast} />}
-      {mode === 'json' && <pre>{JSON.stringify(ast, null, 2)}</pre>}
+      {mode === 'json' && (
+        <pre className="bg-[#0b0f16] border border-[#2b3850] rounded-lg p-3 text-xs overflow-auto">
+          {JSON.stringify(ast, null, 2)}
+        </pre>
+      )}
     </div>
   );
 }

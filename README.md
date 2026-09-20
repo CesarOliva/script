@@ -58,12 +58,24 @@ program ArrayDemo {
 ```text
 script/
 ├── src/
-│   ├── lexer.ts             # Lexical analyzer (scanner → Token[])
-│   ├── ast.ts               # AST node type definitions
-│   ├── parser.ts            # Recursive-descent parser (Token[] → AST)
-│   ├── symbolTable.ts       # Symbol table with nested scopes (stack of maps)
-│   ├── semanticAnalyzer.ts  # Semantic analyzer (AST → type/scope checks + errors)
-│   └── tests.ts             # End-to-end tests (lexer + parser + semantic)
+│   ├── Analyzer/
+│   │   ├── lexer.ts             # Lexical analyzer (scanner → Token[])
+│   │   ├── ast.ts               # AST node type definitions
+│   │   ├── parser.ts            # Recursive-descent parser (Token[] → AST)
+│   │   ├── symbolTable.ts       # Symbol table with nested scopes (stack of maps)
+│   │   ├── semanticAnalyzer.ts  # Semantic analyzer (AST → type/scope checks + errors)
+│   │   ├── compiler.ts          # compileSource() pipeline (lexer → parser → semantic)
+│   │   ├── examples.ts          # Preset programs for the playground
+│   │   └── tests.ts             # End-to-end tests (lexer + parser + semantic)
+│   ├── components/
+│   │   ├── CodeEditor.tsx       # VSCode-like editor (line numbers + current-line highlight)
+│   │   ├── Tabs.tsx             # Result tabs (tokens / AST / semantic / symbols)
+│   │   ├── AstExplorer.tsx      # AST viewer (graph / list / JSON modes)
+│   │   ├── AstGraph.tsx         # D3-based AST graph
+│   │   └── AstTree.tsx          # Collapsible AST list
+│   ├── App.tsx                  # Playground shell (editor + Tabs)
+│   ├── main.tsx                 # React entry point
+│   └── index.css                # Tailwind + legacy panel styles
 ├── documentation/
 │   ├── 1-Especificacion_LenguajeDeProgramacion.md  # Language spec v0.1
 │   ├── 2-Especificacion_Lexica_Formal.md           # Lexical spec v0.1
@@ -112,6 +124,18 @@ npm install
 ```
 
 ## Usage
+
+Run the web playground (React + Vite + Tailwind, live lexer → parser → semantic):
+
+```powershell
+npm run dev
+```
+
+Build the playground for production:
+
+```powershell
+npm run build
+```
 
 Run the end-to-end test harness (lexer + parser + semantic analyzer):
 
@@ -180,6 +204,39 @@ Source Code
 | 6. Optimizer | ⬜ Not started | Constant folding/propagation, DCE (planned) |
 | 7. JS code generator | ⬜ Not started |  |
 | 8. CLI + test suite | 🟡 Partial | `npm test` harness (`src/tests.ts`) now runs the full lexer → parser → semantic pipeline via `runSemanticTest()` with 3 semantic cases (1 valid + 1 multi-error + 1 scope error); no CLI yet |
+
+### Implemented since the previous README update (playground UI — `Tabs` + `CodeEditor`)
+
+- **Result tabs extracted to `src/components/Tabs.tsx`**: `App.tsx` no longer renders the tab
+  nav/body inline; it now uses `<Tabs activeTab={tab} onTabChange={setTab} result={result} />`
+  with typed props (`TabId = 'tokens' | 'ast' | 'semantic' | 'symbols'`, `result: CompileResult`).
+  All tab CSS (`.tabs`, `.tab`, `.tab-body`, `table`/`th`/`td`, `.mono`, `.row-error`,
+  `.alert`, `.empty`) was migrated to Tailwind utilities; the legacy rules were removed
+  from `src/index.css`. `AstExplorer` mode buttons were migrated to the same Tailwind
+  tab-button style so no orphan `.tab` CSS remains.
+- **Generic previous-phase error banners**: each tab reports whether a previous phase
+  failed without specifying which error, always with the `alertError` style —
+  AST on lexical/syntax errors (`No se puede mostrar el AST: hay errores en fases previas.`),
+  semantic on lexical/syntax errors, symbols on lexical/syntax/semantic errors.
+  Own-phase details are still shown (token error list, semantic error list); the
+  success banner (`alertOk`) only renders when there are no previous errors.
+  The symbols tab renders exclusively: on previous errors it shows only the banner
+  (no table / no "Sin símbolos" underneath). This also fixed a `||`/`&&` precedence
+  bug in the semantic tab that rendered the raw `syntaxError` string instead of the banner.
+- **Token type badges** (`src/components/Tabs.tsx:35-88`, `tokenTypeColors`): token types
+  in the tokens table render as colored pills grouped by family (keywords purple,
+  types blue, control flow green, I/O teal, identifiers/literals yellow, operators
+  olive, delimiters fuchsia, `EOF` neutral, `ERROR` red).
+- **VSCode-like editor (`src/components/CodeEditor.tsx`, used in `App.tsx`)**: replaces
+  the plain `<textarea>` with a gutter of line numbers synced to scroll
+  (`translateY(-scrollTop)`), active line number highlighted in white/bold, current-line
+  highlight (`bg-white/[0.05]` + `border-y border-white/10`, 20 px row at
+  `top = 12 + (line-1)*20 - scrollTop`), fixed mono metrics (13 px / 20 px leading,
+  `wrap="off"`, `whiteSpace: pre`), Tab inserts two spaces, focus ring turns the
+  border blue, plus a tab bar (`main.pys` + traffic dots) and a status bar
+  (`Ln X, Col Y · N líneas · N carac. · UTF-8`). The global `textarea { ... }` rule
+  was removed from `src/index.css` because unlayered element selectors override
+  Tailwind utilities such as `bg-transparent`.
 
 ### Implemented since the previous README update (unary + logical operators — `getExpressionType`)
 
