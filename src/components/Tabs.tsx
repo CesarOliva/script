@@ -1,6 +1,6 @@
 import type { CompileResult } from '../Analyzer/compiler';
 import AstExplorer from './AstExplorer';
-import { buttonClass, alertError,  thClass, tdClass, alertOk, emptyText, alertInfo} from './styles';
+import { buttonClass, alertError,  thClass, tdClass, alertOk, emptyText, alertInfo, tokenTypeColors } from './styles';
 
 export type TabId = 'tokens' | 'ast' | 'semantic' | 'symbols';
 
@@ -16,69 +16,6 @@ const TABS: { id: TabId; getLabel: (result: CompileResult) => string }[] = [
     { id: 'semantic', getLabel: (r) => `Semántica (${r.semanticErrors.length})` },
     { id: 'symbols', getLabel: (r) => `Símbolos (${r.symbols.length})` },
 ];
-
-const tokenTypeColors: Record<string, string> = {
-    'program': 'bg-purple-400/20 text-purple-300',
-
-    'int': 'bg-blue-400/20 text-blue-300',
-    'float': 'bg-blue-400/20 text-blue-300',
-    'bool': 'bg-blue-400/20 text-blue-300',
-    'string': 'bg-blue-400/20 text-blue-300',
-    'stack': 'bg-blue-400/20 text-blue-300',
-    'stack<int>': 'bg-blue-400/20 text-blue-300',
-    'stack<float>': 'bg-blue-400/20 text-blue-300',
-    'stack<string>': 'bg-blue-400/20 text-blue-300',
-    'stack<bool>': 'bg-blue-400/20 text-blue-300',
-    'queue': 'bg-blue-400/20 text-blue-300',
-    'queue<int>': 'bg-blue-400/20 text-blue-300',
-    'queue<float>': 'bg-blue-400/20 text-blue-300',
-    'queue<string>': 'bg-blue-400/20 text-blue-300',
-    'queue<bool>': 'bg-blue-400/20 text-blue-300',
-
-    'if': 'bg-green-400/20 text-green-300',
-    'else': 'bg-green-400/20 text-green-300',
-    'for': 'bg-green-400/20 text-green-300',
-    'while': 'bg-green-400/20 text-green-300',
-
-    'const': 'bg-teal-400/20 text-teal-300',
-    'print': 'bg-teal-400/20 text-teal-300',
-    'read': 'bg-teal-400/20 text-teal-300',
-
-    'identifier': 'bg-yellow-400/20 text-yellow-300',
-    'integerLiteral': 'bg-yellow-400/20 text-yellow-300',
-    'floatLiteral': 'bg-yellow-400/20 text-yellow-300',
-    'booleanLiteral': 'bg-yellow-400/20 text-yellow-300',
-    'stringLiteral': 'bg-yellow-400/20 text-yellow-300',
-
-    'assign': 'bg-olive-400/20 text-olive-300',
-    'plus': 'bg-olive-400/20 text-olive-300',
-    'minus': 'bg-olive-400/20 text-olive-300',
-    'multiply': 'bg-olive-400/20 text-olive-300',
-    'module': 'bg-olive-400/20 text-olive-300',
-    'divide': 'bg-olive-400/20 text-olive-300',
-    'equal_equal': 'bg-olive-400/20 text-olive-300',
-    'not_equal': 'bg-olive-400/20 text-olive-300',
-    'less_than': 'bg-olive-400/20 text-olive-300',
-    'less_than_equal': 'bg-olive-400/20 text-olive-300',
-    'greater_than': 'bg-olive-400/20 text-olive-300',
-    'greater_than_equal': 'bg-olive-400/20 text-olive-300',
-    'and': 'bg-olive-400/20 text-olive-300',
-    'or': 'bg-olive-400/20 text-olive-300',
-    'not': 'bg-olive-400/20 text-olive-300',
-
-    'leftBrace': 'bg-fuchsia-400/20 text-fuchsia-300',
-    'rightBrace': 'bg-fuchsia-400/20 text-fuchsia-300',
-    'leftParen': 'bg-fuchsia-400/20 text-fuchsia-300',
-    'rightParen': 'bg-fuchsia-400/20 text-fuchsia-300',
-    'leftBracket': 'bg-fuchsia-400/20 text-fuchsia-300',
-    'rightBracket': 'bg-fuchsia-400/20 text-fuchsia-300',
-    'semicolon': 'bg-fuchsia-400/20 text-fuchsia-300',
-    'comma': 'bg-fuchsia-400/20 text-fuchsia-300',
-    'dot': 'bg-fuchsia-400/20 text-fuchsia-300',
-
-    'EOF': 'bg-neutral-400/20 text-neutral-300',
-    'ERROR': 'bg-red-400/20 text-red-300',
-};
 
 export default function Tabs({ activeTab, onTabChange, result }: TabsProps) {
     const hasLexicalError = result.lexicalErrors.length > 0;

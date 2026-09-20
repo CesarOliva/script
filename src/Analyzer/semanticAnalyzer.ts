@@ -7,15 +7,35 @@ export interface SemanticError {
     column?: number;
 }
 
+export interface StatementTrace {
+    stmt: AST.StatementNode;
+    path: string;
+    depth: number;
+    scopeLevel: number;
+    detail: string;
+    symbols: import("./symbolTable").SymbolEntry[];
+    errors: SemanticError[];
+}
+
+function cloneValue<T>(value: T): T {
+    return JSON.parse(JSON.stringify(value));
+}
+
 const stackMethods = ['push', 'pop', 'peek', 'isEmpty', 'size', 'clear'];
 const queueMethods = ['enqueue', 'dequeue', 'front', 'isEmpty', 'size', 'clear'];
 
 export class SemanticAnalyzer {
     private symbolTable = new SymbolTable();
     public errors: SemanticError[] = [];
+    private trace: StatementTrace[] | null = null;
+    private traceSuspended = 0;
+    private tracePath = '';
+    private traceDepth = 0;
 
     analyze(ast: AST.ProgramNode | AST.StatementNode[]): boolean {
         this.errors = [];
+        this.symbolTable = new SymbolTable();
+        this.trace = null;
 
         if ('body' in ast && Array.isArray(ast.body)) {
             this.visitProgram(ast as AST.ProgramNode);
@@ -28,13 +48,76 @@ export class SemanticAnalyzer {
         return this.errors.length === 0;
     }
 
-    private visitProgram(node: AST.ProgramNode): void {
-        for (const stmt of node.body) {
-            this.visitStatement(stmt);
+    analyzeWithTrace(program: AST.ProgramNode): StatementTrace[] {
+        this.errors = [];
+        this.symbolTable = new SymbolTable();
+        this.trace = [];
+        this.traceSuspended = 0;
+
+        program.body.forEach((stmt, i) => {
+            this.visitStatement(stmt, `${i}`, 0);
+        });
+
+        const out = this.trace;
+        this.trace = null;
+        return out;
+    }
+
+    private snapshotSymbols(): import("./symbolTable").SymbolEntry[] {
+        return cloneValue(this.symbolTable.getAllSymbols());
+    }
+
+    private pushTrace(stmt: AST.StatementNode, path: string, depth: number, detail: string): void {
+        if (!this.trace || this.traceSuspended > 0) return;
+        this.trace.push({
+            stmt: cloneValue(stmt),
+            path,
+            depth,
+            scopeLevel: this.symbolTable.getCurrentScopeLevel(),
+            detail,
+            symbols: this.snapshotSymbols(),
+            errors: this.errors.map((e) => ({ ...e })),
+        });
+    }
+
+    private traceDetail(stmt: AST.StatementNode): string {
+        const level = this.symbolTable.getCurrentScopeLevel();
+
+        switch (stmt.type) {
+            case 'VariableDeclaration':
+                return `[Semántico] Registrando '${stmt.varType} ${stmt.name}' en Scope ${level}` +
+                    (stmt.initializer ? ' · verificando tipo del inicializador' : ' · sin inicializador');
+            case 'ConstantDeclaration':
+                return `[Semántico] Registrando 'const ${stmt.varType} ${stmt.name}' en Scope ${level} (inmutable)`;
+            case 'Assignment':
+                return `[Semántico] Asignando valor a '${stmt.target}' en Scope ${level} · verificando tipos` +
+                    (stmt.index ? ' · índice debe ser int' : '');
+            case 'PrintStatement':
+                return `[Semántico] Evaluando expresión de 'print(...)' en Scope ${level}`;
+            case 'ReadStatement':
+                return `[Semántico] Verificando 'read(${stmt.target})' en Scope ${level} · debe existir y ser mutable`;
+            case 'IfStatement':
+                return `[Semántico] Evaluando condición del 'if' en Scope ${level} (debe ser bool) · entra a un nuevo Scope`;
+            case 'ForStatement':
+                return `[Semántico] Analizando 'for' en Scope ${level} (init, condición bool, update) · nuevo Scope`;
+            case 'WhileStatement':
+                return `[Semántico] Evaluando condición del 'while' en Scope ${level} (debe ser bool) · entra a un nuevo Scope`;
+            case 'ExpressionStatement':
+                return `[Semántico] Evaluando sentencia de expresión en Scope ${level} (p. ej. llamada push/pop)`;
+            default:
+                return `[Semántico] Procesando sentencia ${(stmt as { type: string }).type} en Scope ${level}`;
         }
     }
 
-    private visitStatement(stmt: AST.StatementNode): void {
+    private visitProgram(node: AST.ProgramNode): void {
+        node.body.forEach((stmt, i) => {
+            this.visitStatement(stmt, `${i}`, 0);
+        });
+    }
+
+    private visitStatement(stmt: AST.StatementNode, path = '', depth = 0): void {
+        this.tracePath = path;
+        this.traceDepth = depth;
         switch (stmt.type) {
             case 'VariableDeclaration':
                 this.visitVariableDeclaration(stmt);
@@ -43,13 +126,13 @@ export class SemanticAnalyzer {
                 this.visitConstantDeclaration(stmt);
                 break;
             case 'IfStatement':
-                this.visitIfStatement(stmt);
+                this.visitIfStatement(stmt, path, depth);
                 break;
             case 'ForStatement':
-                this.visitForStatement(stmt);
+                this.visitForStatement(stmt, path, depth);
                 break;
             case 'WhileStatement':
-                this.visitWhileStatement(stmt);
+                this.visitWhileStatement(stmt, path, depth);
                 break;
             case 'PrintStatement':
                 this.visitPrintStatement(stmt);
@@ -91,6 +174,8 @@ export class SemanticAnalyzer {
                 message: `La variable ${node.name}' ya ha sido declarada en el ámbito actual`
             })
         }
+
+        this.pushTrace(node, this.tracePath, this.traceDepth, this.traceDetail(node));
     }
 
     private visitConstantDeclaration(node: AST.ConstantDeclarationNode): void {
@@ -114,9 +199,11 @@ export class SemanticAnalyzer {
                 message: `La constante '${node.name}' ya ha sido declarada en este ámbito`
             })
         }
+
+        this.pushTrace(node, this.tracePath, this.traceDepth, this.traceDetail(node));
     }
 
-    private visitIfStatement(node: AST.IfStatementNode): void {
+    private visitIfStatement(node: AST.IfStatementNode, path = '', depth = 0): void {
         const condType = this.getExpressionType(node.condition);
         if (condType && condType !== 'bool') {
             this.errors.push({
@@ -124,30 +211,37 @@ export class SemanticAnalyzer {
             })
         }
 
+        this.pushTrace(node, path, depth, this.traceDetail(node));
+
         this.symbolTable.enterScope();
-        for (const stmt of node.thenBranch) {
-            this.visitStatement(stmt);
-        }
+        node.thenBranch.forEach((stmt, i) => {
+            this.visitStatement(stmt, `${path}.then.${i}`, depth + 1);
+        });
         this.symbolTable.exitScope();
 
         if (node.elseBranch) {
             if (Array.isArray(node.elseBranch)) {
                 this.symbolTable.enterScope();
-                for (const stmt of node.elseBranch) {
-                    this.visitStatement(stmt);
-                }
+                node.elseBranch.forEach((stmt, i) => {
+                    this.visitStatement(stmt, `${path}.else.${i}`, depth + 1);
+                });
                 this.symbolTable.exitScope();
             } else {
-                this.visitIfStatement(node.elseBranch as AST.IfStatementNode);
+                this.visitIfStatement(node.elseBranch as AST.IfStatementNode, `${path}.else`, depth + 1);
             }
         }
     }
 
-    private visitForStatement(node: AST.ForStatementNode): void {
+    private visitForStatement(node: AST.ForStatementNode, path = '', depth = 0): void {
         this.symbolTable.enterScope();
 
         if (node.init) {
-            this.visitStatement(node.init);
+            this.traceSuspended++;
+            try {
+                this.visitStatement(node.init, `${path}.init`, depth + 1);
+            } finally {
+                this.traceSuspended--;
+            }
         }
 
         if (node.condition) {
@@ -161,20 +255,27 @@ export class SemanticAnalyzer {
 
         if (node.update) {
             if ('type' in node.update && typeof node.update.type === 'string' && node.update.type.endsWith('Statement')) {
-                this.visitStatement(node.update as AST.StatementNode);
+                this.traceSuspended++;
+                try {
+                    this.visitStatement(node.update as AST.StatementNode, `${path}.update`, depth + 1);
+                } finally {
+                    this.traceSuspended--;
+                }
             } else {
                 this.getExpressionType(node.update as AST.ExpressionNode);
             }
         }
 
-        for (const stmt of node.body) {
-            this.visitStatement(stmt);
-        }
+        this.pushTrace(node, path, depth, this.traceDetail(node));
+
+        node.body.forEach((stmt, i) => {
+            this.visitStatement(stmt, `${path}.body.${i}`, depth + 1);
+        });
 
         this.symbolTable.exitScope();
     }
 
-    private visitWhileStatement(node: AST.WhileStatementNode): void {
+    private visitWhileStatement(node: AST.WhileStatementNode, path = '', depth = 0): void {
         const condType = this.getExpressionType(node.condition);
         if (condType && condType !== 'bool') {
             this.errors.push({
@@ -182,16 +283,19 @@ export class SemanticAnalyzer {
             })
         }
 
+        this.pushTrace(node, path, depth, this.traceDetail(node));
+
         this.symbolTable.enterScope();
-        for (const stmt of node.body) {
-            this.visitStatement(stmt);
-        }
+        node.body.forEach((stmt, i) => {
+            this.visitStatement(stmt, `${path}.body.${i}`, depth + 1);
+        });
 
         this.symbolTable.exitScope();
     }
 
     private visitPrintStatement(node: AST.PrintStatementNode): void {
         this.getExpressionType(node.expression);
+        this.pushTrace(node, this.tracePath, this.traceDepth, this.traceDetail(node));
     }
 
     private visitReadStatement(node: AST.ReadStatementNode): void {
@@ -201,6 +305,7 @@ export class SemanticAnalyzer {
             this.errors.push({
                 message: `La variable '${node.target}' utilizada en 'read()' no ha sido declarada`
             })
+            this.pushTrace(node, this.tracePath, this.traceDepth, this.traceDetail(node));
             return;
         }
 
@@ -209,6 +314,8 @@ export class SemanticAnalyzer {
                 message: `No se puede leer un valor mediante 'read()' hacia la constante '${node.target}'`
             })
         }
+
+        this.pushTrace(node, this.tracePath, this.traceDepth, this.traceDetail(node));
     }
 
     private visitAssignment(node: AST.AssignmentNode): void {
@@ -218,6 +325,7 @@ export class SemanticAnalyzer {
             this.errors.push({
                 message: `La variable '${node.target}' no ha sido declarada`
             });
+            this.pushTrace(node, this.tracePath, this.traceDepth, this.traceDetail(node));
             return;
         }
 
@@ -247,10 +355,13 @@ export class SemanticAnalyzer {
                 message: `No se puede asignar un valor de tipo '${exprType}' a '${node.target}' (${symbol.type})`
             })
         }
+
+        this.pushTrace(node, this.tracePath, this.traceDepth, this.traceDetail(node));
     }
 
     private visitExpressionStatement(stmt: AST.ExpressionStatementNode): void {
         this.getExpressionType(stmt.expression);
+        this.pushTrace(stmt, this.tracePath, this.traceDepth, this.traceDetail(stmt));
     }
 
     private getExpressionType(expr: AST.ExpressionNode): string | undefined {

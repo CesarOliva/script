@@ -5,6 +5,7 @@ interface CodeEditorProps {
     onChange: (value: string) => void;
     placeholder?: string;
     fileName?: string;
+    highlightedLine?: number | null;
 }
 
 const LINE_HEIGHT = 20;
@@ -15,6 +16,7 @@ export default function CodeEditor({
     onChange,
     placeholder = '',
     fileName = 'main.pys',
+    highlightedLine = null,
 }: CodeEditorProps) {
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const [caret, setCaret] = useState({ line: 1, col: 1 });
@@ -78,15 +80,16 @@ export default function CodeEditor({
                         {Array.from({ length: lineCount }, (_, i) => {
                             const n = i + 1;
                             const active = n === caret.line;
+                            const stepped = highlightedLine === n;
                             return (
                                 <div
                                     key={n}
                                     style={{ height: LINE_HEIGHT, lineHeight: `${LINE_HEIGHT}px` }}
                                     className={`pr-3 text-right font-mono text-xs tabular-nums ${
-                                        active ? 'font-bold text-white' : 'text-[#3f4f6d]'
+                                        stepped ? 'font-bold text-amber-300' : active ? 'font-bold text-white' : 'text-[#3f4f6d]'
                                     }`}
                                 >
-                                    {n}
+                                    {stepped ? `▶${n}` : n}
                                 </div>
                             );
                         })}
@@ -94,6 +97,16 @@ export default function CodeEditor({
                 </div>
 
                 <div className="relative min-w-0 flex-1">
+                    {highlightedLine !== null && highlightedLine >= 1 && highlightedLine <= lineCount && (
+                        <div
+                            aria-hidden
+                            className="pointer-events-none absolute left-0 right-0 border-y border-amber-400/40 bg-amber-400/10"
+                            style={{
+                                top: PAD_TOP + (highlightedLine - 1) * LINE_HEIGHT - scrollTop,
+                                height: LINE_HEIGHT,
+                            }}
+                        />
+                    )}
                     <div
                         aria-hidden
                         className="pointer-events-none absolute left-0 right-0 border-y border-white/10 bg-white/5"
