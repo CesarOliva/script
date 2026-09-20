@@ -58,7 +58,7 @@ export default function CodeEditor({
 
     return (
         <div className="h-full flex flex-1 flex-col overflow-hidden rounded-lg border bg-[#0b0f16] transition-colors border-[#2b3850]">
-            <div className="flex shrink-0 items-center justify-between border-b border-white/5 bg-white/[0.02] px-3 py-1.5">
+            <div className="flex shrink-0 items-center justify-between border-b border-white/5 bg-white/2 px-3 py-1.5">
                 <div className="flex items-center gap-2">
                     <span className="flex gap-1.5">
                         <i className="block h-2.5 w-2.5 rounded-full bg-[#ff5f57]" />
@@ -73,7 +73,7 @@ export default function CodeEditor({
             </div>
 
             <div className="flex min-h-0 flex-1">
-                <div className="w-12 shrink-0 select-none overflow-hidden border-r border-white/5 bg-white/[0.02] py-3">
+                <div className="w-12 shrink-0 select-none overflow-hidden border-r border-white/5 bg-white/2 py-3">
                     <div style={{ transform: `translateY(${-scrollTop}px)` }}>
                         {Array.from({ length: lineCount }, (_, i) => {
                             const n = i + 1;
@@ -96,7 +96,7 @@ export default function CodeEditor({
                 <div className="relative min-w-0 flex-1">
                     <div
                         aria-hidden
-                        className="pointer-events-none absolute left-0 right-0 border-y border-white/10 bg-white/[0.05]"
+                        className="pointer-events-none absolute left-0 right-0 border-y border-white/10 bg-white/5"
                         style={{
                         top: PAD_TOP + (caret.line - 1) * LINE_HEIGHT - scrollTop,
                         height: LINE_HEIGHT,
@@ -126,13 +126,13 @@ export default function CodeEditor({
                         autoCorrect="off"
                         wrap="off"
                         placeholder={placeholder}
-                        className="absolute inset-0 h-full w-full resize-none overflow-auto bg-transparent p-3 font-mono text-[13px] leading-[20px] text-[#e6e9ee] caret-blue-500 outline-none selection:bg-blue-600/40 selection:text-white placeholder:text-[#3f4f6d]"
+                        className="absolute inset-0 h-full w-full resize-none overflow-auto bg-transparent p-3 font-mono text-[13px] leading-5 text-[#e6e9ee] caret-blue-500 outline-none selection:bg-blue-600/40 selection:text-white placeholder:text-[#3f4f6d]"
                         style={{ whiteSpace: 'pre' }}
                     />
                 </div>
             </div>
 
-            <div className="flex shrink-0 items-center justify-between border-t border-white/5 bg-white/[0.02] px-3 py-1 font-mono text-[11px] text-[#5b6b84]">
+            <div className="flex shrink-0 items-center justify-between border-t border-white/5 bg-white/2 px-3 py-1 font-mono text-[11px] text-[#5b6b84]">
                 <span>Ln {caret.line}, Col {caret.col}</span>
                 <span>{lineCount} líneas · {value.length} carac. · UTF-8</span>
             </div>

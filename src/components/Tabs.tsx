@@ -86,7 +86,7 @@ export default function Tabs({ activeTab, onTabChange, result }: TabsProps) {
     const hasSemanticErrors = result.semanticErrors.length > 0;
 
     return (
-        <section className="md:col-span-5 bg-white/[0.02] border border-[#263145] rounded-xl flex flex-col min-h-[540px] md:min-h-0 md:flex-1 md:overflow-hidden lg:h-full">
+        <section className="md:col-span-5 bg-white/2 border border-[#263145] rounded-xl flex flex-col min-h-130 md:min-h-0 md:flex-1 md:overflow-hidden lg:h-full">
             <nav className="flex gap-2 my-3 flex-wrap px-4 shrink-0">
                 {TABS.map(({ id, getLabel }) => (
                     <button
@@ -99,7 +99,7 @@ export default function Tabs({ activeTab, onTabChange, result }: TabsProps) {
                 ))}
             </nav>
 
-            <div className="rounded-b-lg border-t border-[#223047] overflow-auto max-h-[520px] md:max-h-none md:flex-1 md:min-h-0">
+            <div className="rounded-b-lg border-t border-[#223047] overflow-auto max-h-130 md:max-h-none md:flex-1 md:min-h-0">
                 {activeTab === 'tokens' && (
                     <>
                         {result.lexicalErrors.length > 0 && (
