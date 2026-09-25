@@ -48,10 +48,10 @@ export default function CodeEditor({
                 const el = e.currentTarget;
                 const start = el.selectionStart;
                 const end = el.selectionEnd;
-                const next = value.slice(0, start) + '  ' + value.slice(end);
+                const next = value.slice(0, start) + '    ' + value.slice(end);
                 onChange(next);
                 requestAnimationFrame(() => {
-                    el.selectionStart = el.selectionEnd = start + 2;
+                    el.selectionStart = el.selectionEnd = start + 4;
                     updateCaret(el);
                 });
             }

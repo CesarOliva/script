@@ -148,8 +148,10 @@ export default function Tabs({ activeTab, onTabChange, result }: TabsProps) {
                 {activeTab === 'symbols' && (
                     <div>
                         {(hasLexicalError || hasSyntaxError || hasSemanticErrors) ? (
-                            <div className={alertError}>
-                                No se pueden mostrar los símbolos: hay errores en fases previas.
+                            <div className="p-4">
+                                <div className={alertError}>
+                                    No se pueden mostrar los símbolos: hay errores en fases previas.
+                                </div>
                             </div>
                         ) : result.symbols.length === 0 ? (
                             <div className="p-4">
