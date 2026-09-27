@@ -65,6 +65,7 @@ script/
 │   │   ├── symbolTable.ts       # Symbol table with nested scopes (stack of maps)
 │   │   ├── semanticAnalyzer.ts  # Semantic analyzer (AST → type/scope checks + errors)
 │   │   ├── compiler.ts          # compileSource() pipeline (lexer → parser → semantic)
+│   │   ├── compilerStepEngine.ts # Step-by-step simulation engine (snapshots per instruction)
 │   │   ├── examples.ts          # Preset programs for the playground
 │   │   └── tests.ts             # End-to-end tests (lexer + parser + semantic)
 │   ├── components/
@@ -72,19 +73,23 @@ script/
 │   │   ├── Tabs.tsx             # Result tabs (tokens / AST / semantic / symbols)
 │   │   ├── AstExplorer.tsx      # AST section (header + legend + graph/JSON toggle, owns collapse state)
 │   │   ├── AstGraph.tsx         # D3-based vertical AST graph (controlled component)
-│   │   └── AstTree.tsx          # UiNode builders (toUiTree) + collectKeys/countUiNodes helpers
-│   ├── App.tsx                  # Playground shell (editor + Tabs)
+│   │   ├── AstTree.tsx          # UiNode builders (toUiTree) + collectKeys/countUiNodes helpers
+│   │   ├── StepDebugger.tsx     # Step-by-step mode view (snapshots, progress, phase badge)
+│   │   └── styles.tsx           # Shared Tailwind utilities (badges, buttons, panels, pills)
+│   ├── App.tsx                  # Playground shell (editor + Tabs / StepDebugger)
 │   ├── main.tsx                 # React entry point
 │   └── index.css                # Tailwind base (body bg/color + scrollbar + md overflow lock)
 ├── documentation/
 │   ├── 1-Especificacion_LenguajeDeProgramacion.md  # Language spec v0.1
 │   ├── 2-Especificacion_Lexica_Formal.md           # Lexical spec v0.1
 │   ├── 3-Especificacion_Sintactica_Formal.md       # Syntactic spec (EBNF) v0.1
+│   ├── 4-LogicaProposicional_Flujo.md              # Flowcharts (Mermaid), proof by cases, truth tables
 │   ├── LexerExp.md    # Lexer implementation notes
 │   ├── ParserExp.md   # Parser implementation notes
 │   ├── ASTExp.md      # AST notes
 │   ├── SymbolTableExp.md      # Symbol table implementation notes
-│   └── SemanticAnalyzerExp.md # Semantic analyzer implementation notes
+│   ├── SemanticAnalyzerExp.md # Semantic analyzer implementation notes
+│   └── StepDebuggerExp.md     # Step-by-step engine notes
 ├── package.json
 ├── tsconfig.json
 └── README.md
@@ -100,7 +105,7 @@ script/
 - **Index access (implemented):** `array[index]` as an expression — e.g. `int first = numbers[0];`, `print(numbers[1]);`
 - **Declarations:** `int x = 10;`, `int x;`, `const int MAX = 100;`, `stack<int> s;`, `int[] arr = [1, 2];`
 - **Assignment:** `x = expr;` and indexed assignment `arr[i] = expr;` (e.g. `numbers[1] = 50;` → `Assignment { target, index, value }`)
-- **Control flow:** `if / else` (with `else if` via nesting), C-style `for (init; cond; update)`, `while (cond) { ... }`
+- **Control flow:** `if / else` (with `else if` via nesting), C-style `for (init; cond; update)`, `while (cond) { ... }`, `do { ... } while (cond);` (body runs at least once, trailing `;` required)
 - **I/O:** `read(variable);`, `print(expression);`
 - **Method calls (for `stack`/`queue`):** `obj.method(args)` with comma-separated args — e.g. `numbers.push(10);`, `numbers.pop()`, `numbers.size()`, `q.enqueue(1);`, `q.dequeue()`
 - **Operators:** `+ - * / %`, `== != < <= > >=`, `&& || !`, with C-like precedence
@@ -108,7 +113,7 @@ script/
 - **Comments:** single-line `//` only
 - **Statement terminator:** `;` (blocks don't need it; method calls used as statements need `;` via `ExpressionStatement`)
 
-Out of scope for v0.1: user-defined functions, `do-while`, classes, modules, type inference.
+Out of scope for v0.1: user-defined functions, classes, modules, type inference.
 
 Full details: `documentation/1-Especificacion_LenguajeDeProgramacion.md`.
 
@@ -192,18 +197,34 @@ Source Code
 
 ## Current status
 
-> This section is maintained as the project evolves. Last updated: 2026-09-20.
+> This section is maintained as the project evolves. Last updated: 2026-09-27.
 
 | Phase | Status | Notes |
 |---|---|---|
-| 1. Language / lexical / syntactic spec | ✅ Done | v0.1 specs in `documentation/` (language, lexical, EBNF syntax). Spec already defines `bool`, `while`, `stack<T>` / `queue<T>`, and method calls |
-| 2. Lexer (`src/lexer.ts`) | ✅ Implemented | Keywords `program int float bool string stack queue if else for while const print read true false`, identifiers, int/float/bool/string literals, operators (`+ - * / % = == != < <= > >= && \|\| !`), delimiters `() {} [] ; , .`, `//` comments, `EOF`, line/column tracking, `ERROR` recovery tokens. `[` / `]` already emitted, reused for arrays. `Token` payload field renamed `value` → `lexeme` (`Token { type, lexeme, literal?, line, column }`, commit `32126e8`) |
-| 3. Parser + AST (`src/parser.ts`, `src/ast.ts`) | ✅ Implemented | Recursive descent. Supports: `program`, var/const declarations (incl. parametrized `stack<T>` / `queue<T>` with primitive `T`, and array types `T[]` with primitive `T`), simple + indexed assignment (`x = e;`, `arr[i] = e;`), `if/else`, `for`, `while` (condition is now required: `WhileStatementNode.condition: ExpressionNode`, not optional), `print`/`read`, array literals (`[e, ...]` → `ArrayLiteral { elements }`), index access (`a[i]` → `IndexAccess { array, index }`), method calls `obj.method(arg, ...)` → `MethodCall` node (`object`, `method`, `args`), expression statements, full expression precedence. **Out of scope (will not be implemented):** multi-dimensional arrays, `const` of structured/array type, structured types in `for`-init |
-| 4. Semantic analyzer (`src/semanticAnalyzer.ts` + `src/symbolTable.ts`) | ✅ Implemented | Visitor over the AST with non-fatal error accumulation (`SemanticError { message, line?, column? }` + `errors[]`, `analyze()` returns `errors.length === 0`). Symbol table as stack-of-maps with `enterScope`/`exitScope` (scopes opened for `if`/`for`/`while` bodies, incl. `then`/`else` branches), `insert` (same-scope redeclaration check) and reverse `lookup` (shadowing-aware). Checks: declaration-before-use, `const` immutability (incl. `read()` into `const`), init/assignment type compatibility, `bool`-only `if`/`for`/`while` conditions, arithmetic vs relational operand compatibility (`== != < <= > >=` → `bool`), logical `&&`/`||` (both sides must be `bool` → `bool`), unary `!` (requires `bool` → `bool`) and unary `-` (requires `int`/`float`, preserves operand type), `int`-only array indices, homogeneous `ArrayLiteral` (empty `[]` defaults to `int[]`), `IndexAccess` element-type resolution (`T[]` → `T`), and `stack<T>`/`queue<T>` method validation (`push`/`pop`/`peek`/`isEmpty`/`size`/`clear`, `enqueue`/`dequeue`/`front`/`isEmpty`/`size`/`clear` with inner-type checks on `push`/`enqueue` and typed returns). `else if` chains handled by recursing into `visitIfStatement()`. `analyze()` accepts `ProgramNode | StatementNode[]` |
+| 1. Language / lexical / syntactic spec | ✅ Done | v0.1 specs in `documentation/` (language, lexical, EBNF syntax) + `4-LogicaProposicional_Flujo.md` (Mermaid flowcharts for `if`/`while`/`do-while`/`for`, proof by cases, truth tables). Spec already defines `bool`, `while`, `stack<T>` / `queue<T>`, and method calls; `do-while` is now implemented (was out of scope in v0.1) |
+| 2. Lexer (`src/lexer.ts`) | ✅ Implemented | Keywords `program int float bool string stack queue if else for do while const print read true false`, identifiers, int/float/bool/string literals, operators (`+ - * / % = == != < <= > >= && \|\| !`), delimiters `() {} [] ; , .`, `//` comments, `EOF`, line/column tracking, `ERROR` recovery tokens. `[` / `]` already emitted, reused for arrays. `Token` payload field renamed `value` → `lexeme` (`Token { type, lexeme, literal?, line, column }`, commit `32126e8`) |
+| 3. Parser + AST (`src/parser.ts`, `src/ast.ts`) | ✅ Implemented | Recursive descent. Supports: `program`, var/const declarations (incl. parametrized `stack<T>` / `queue<T>` with primitive `T`, and array types `T[]` with primitive `T`), simple + indexed assignment (`x = e;`, `arr[i] = e;`), `if/else`, `for`, `while` (condition is now required: `WhileStatementNode.condition: ExpressionNode`, not optional), `do-while` (`do { ... } while (cond);` with required trailing `;` → `DoWhileStatement { body, condition }`), `print`/`read`, array literals (`[e, ...]` → `ArrayLiteral { elements }`), index access (`a[i]` → `IndexAccess { array, index }`), method calls `obj.method(arg, ...)` → `MethodCall` node (`object`, `method`, `args`), expression statements, full expression precedence. **Out of scope (will not be implemented):** multi-dimensional arrays, `const` of structured/array type, structured types in `for`-init |
+| 4. Semantic analyzer (`src/semanticAnalyzer.ts` + `src/symbolTable.ts`) | ✅ Implemented | Visitor over the AST with non-fatal error accumulation (`SemanticError { message, line?, column? }` + `errors[]`, `analyze()` returns `errors.length === 0`). Symbol table as stack-of-maps with `enterScope`/`exitScope` (scopes opened for `if`/`for`/`while`/`do-while` bodies, incl. `then`/`else` branches), `insert` (same-scope redeclaration check) and reverse `lookup` (shadowing-aware). Checks: declaration-before-use, `const` immutability (incl. `read()` into `const`), init/assignment type compatibility, `bool`-only `if`/`for`/`while`/`do-while` conditions, arithmetic vs relational operand compatibility (`== != < <= > >=` → `bool`), logical `&&`/`||` (both sides must be `bool` → `bool`), unary `!` (requires `bool` → `bool`) and unary `-` (requires `int`/`float`, preserves operand type), `int`-only array indices, homogeneous `ArrayLiteral` (empty `[]` defaults to `int[]`), `IndexAccess` element-type resolution (`T[]` → `T`), and `stack<T>`/`queue<T>` method validation (`push`/`pop`/`peek`/`isEmpty`/`size`/`clear`, `enqueue`/`dequeue`/`front`/`isEmpty`/`size`/`clear` with inner-type checks on `push`/`enqueue` and typed returns). `else if` chains handled by recursing into `visitIfStatement()`. `analyze()` accepts `ProgramNode | StatementNode[]` |
 | 5. Intermediate code | ⬜ Not started | Three-address code with temporals/labels |
 | 6. Optimizer | ⬜ Not started | Constant folding/propagation, DCE (planned) |
 | 7. JS code generator | ⬜ Not started |  |
 | 8. CLI + test suite | 🟡 Partial | `npm test` harness (`src/tests.ts`) now runs the full lexer → parser → semantic pipeline via `runSemanticTest()` with 3 semantic cases (1 valid + 1 multi-error + 1 scope error); no CLI yet |
+
+### Implemented since the previous README update (2026-09-27 — `do-while` + propositional-logic docs)
+
+- **`do-while` loop** (`src/Analyzer/ast.ts`, `parser.ts`, `semanticAnalyzer.ts`, UI + step engine):
+  `do { ... } while (cond);` (trailing `;` required, body runs at least once) → `DoWhileStatement { body, condition }`.
+  Parser adds `doWhileStatement()` dispatched from `statement()` on the `do` keyword (lexer already emitted `do`/`while`).
+  Semantic `visitDoWhileStatement()` opens a new scope for the body and requires a `bool` condition
+  (`La condición del 'do-while' debe ser de tipo 'bool', se obtuvo '...'`).
+  UI support: `AstTree.tsx` (`DoWhileStatement` node with `body`/`cond` children), `AstGraph.tsx`
+  (`DoWhile` short label + `statement` category), `compilerStepEngine.ts` (`do` signature, trace text, shell/body handling, `do` token lookup).
+- **Propositional-logic / flow documentation** (`documentation/4-LogicaProposicional_Flujo.md`, new):
+  centered Mermaid flowcharts for `if`/`while`/`do-while`/`for` (`Q1`, `V -> S1`, `F -> S2`, `Q2`),
+  proof by cases (`Q1 → [S1] R2`, `¬Q1 → [S2] R2`, with a `modus ponens` explainer),
+  truth tables (`Q1 -> R2`, `¬Q1 -> R2`, their disjunction as tautology) and the requested
+  `Q1 Q2 R1->R2 R1 N -> R2` table read as implication vs. its complement (`R1 ∧ ¬R2`).
+- **Code editor (TO DO punto 6):** no change — already implemented (`src/components/CodeEditor.tsx`: VSCode-like gutter, active-line highlight, `Tab` = 2 spaces, `main.pys` tab bar + `Ln/Col` status bar).
 
 ### Implemented since the previous README update (2026-09-20 — Tailwind migration + 100vh layout + AST redesign)
 
@@ -337,5 +358,6 @@ Source Code
 - `documentation/1-Especificacion_LenguajeDeProgramacion.md` — language definition, types, statements, roadmap.
 - `documentation/2-Especificacion_Lexica_Formal.md` — tokens, regexes, maximal munch, acceptance criteria.
 - `documentation/3-Especificacion_Sintactica_Formal.md` — EBNF grammar and precedence table.
+- `documentation/4-LogicaProposicional_Flujo.md` — Mermaid flowcharts (`if`/`while`/`do-while`/`for`), proof by cases, truth tables.
 - `documentation/LexerExp.md`, `ParserExp.md`, `ASTExp.md` — implementation explanations.
-- `documentation/SymbolTableExp.md`, `SemanticAnalyzerExp.md` — symbol table and semantic analyzer implementation explanations.
+- `documentation/SymbolTableExp.md`, `SemanticAnalyzerExp.md`, `StepDebuggerExp.md` — symbol table, semantic analyzer and step-engine implementation explanations.
