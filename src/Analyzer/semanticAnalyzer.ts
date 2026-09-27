@@ -48,6 +48,9 @@ export class SemanticAnalyzer {
         return this.errors.length === 0;
     }
 
+
+    // Métodos especificos para el modo paso a paso en el web playground
+
     analyzeWithTrace(program: AST.ProgramNode): StatementTrace[] {
         this.errors = [];
         this.symbolTable = new SymbolTable();
@@ -102,6 +105,8 @@ export class SemanticAnalyzer {
                 return `[Semántico] Analizando 'for' en Scope ${level} (init, condición bool, update) · nuevo Scope`;
             case 'WhileStatement':
                 return `[Semántico] Evaluando condición del 'while' en Scope ${level} (debe ser bool) · entra a un nuevo Scope`;
+            case 'DoWhileStatement':
+                return `[Semántico] Evaluando cuerpo del 'do-while' en Scope ${level} y condición final (debe ser bool) · entra a un nuevo Scope`;
             case 'ExpressionStatement':
                 return `[Semántico] Evaluando sentencia de expresión en Scope ${level} (p. ej. llamada push/pop)`;
             default:
@@ -109,6 +114,7 @@ export class SemanticAnalyzer {
         }
     }
 
+    // Analizador Sintáctico
     private visitProgram(node: AST.ProgramNode): void {
         node.body.forEach((stmt, i) => {
             this.visitStatement(stmt, `${i}`, 0);
@@ -133,6 +139,9 @@ export class SemanticAnalyzer {
                 break;
             case 'WhileStatement':
                 this.visitWhileStatement(stmt, path, depth);
+                break;
+            case 'DoWhileStatement':
+                this.visitDoWhileStatement(stmt, path, depth);
                 break;
             case 'PrintStatement':
                 this.visitPrintStatement(stmt);
@@ -291,6 +300,23 @@ export class SemanticAnalyzer {
         });
 
         this.symbolTable.exitScope();
+    }
+
+    private visitDoWhileStatement(node: AST.DoWhileStatementNode, path = '', depth = 0): void {
+        this.pushTrace(node, path, depth, this.traceDetail(node));
+
+        this.symbolTable.enterScope();
+        node.body.forEach((stmt, i) => {
+            this.visitStatement(stmt, `${path}.body.${i}`, depth + 1);
+        });
+        this.symbolTable.exitScope();
+
+        const condType = this.getExpressionType(node.condition);
+        if (condType && condType !== 'bool') {
+            this.errors.push({
+                message: `La condición del 'do-while' debe ser de tipo 'bool', se obtuvo '${condType}'`
+            })
+        }
     }
 
     private visitPrintStatement(node: AST.PrintStatementNode): void {

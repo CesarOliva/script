@@ -38,6 +38,7 @@ const STMT_TYPES = new Set([
   'IfStatement',
   'ForStatement',
   'WhileStatement',
+  'DoWhileStatement',
   'PrintStatement',
   'ReadStatement',
   'Assignment',
@@ -178,6 +179,19 @@ function stmtNode(s: StatementNode): UiNode {
             s.body.map((st, i) => ({ edge: `[${i}]`, node: stmtNode(st) })),
           ),
         },
+      ]);
+    case 'DoWhileStatement':
+      return mk('DoWhileStatement', 'statement', undefined, [
+        {
+          edge: 'body',
+          node: mk(
+            'Block',
+            'statement',
+            `${s.body.length} sent.`,
+            s.body.map((st, i) => ({ edge: `[${i}]`, node: stmtNode(st) })),
+          ),
+        },
+        { edge: 'cond', node: exprNode(s.condition) },
       ]);
   }
 }

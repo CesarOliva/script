@@ -75,6 +75,8 @@ function statementSignature(stmt: StatementNode): string[] {
       return ['for'];
     case 'WhileStatement':
       return ['while'];
+    case 'DoWhileStatement':
+      return ['do'];
     case 'ExpressionStatement':
       return [';'];
     default:
@@ -123,6 +125,8 @@ function describeStatement(stmt: StatementNode, scopeHint: number): string {
       return `[Semántico] Analizando 'for' (init, condición bool, update) · entra a un nuevo Scope`;
     case 'WhileStatement':
       return `[Semántico] Evaluando condición del 'while' (debe ser bool) · entra a un nuevo Scope`;
+    case 'DoWhileStatement':
+      return `[Semántico] Evaluando cuerpo del 'do-while' y condición final (debe ser bool) · entra a un nuevo Scope`;
     case 'ExpressionStatement':
       return `[Semántico] Evaluando sentencia de expresión (p. ej. llamada a método push/pop)`;
     default:
@@ -174,7 +178,7 @@ function shellOf(stmt: StatementNode): StatementNode {
     c.thenBranch = [];
     delete (c as { elseBranch?: unknown }).elseBranch;
   }
-  if (c.type === 'ForStatement' || c.type === 'WhileStatement') {
+  if (c.type === 'ForStatement' || c.type === 'WhileStatement' || c.type === 'DoWhileStatement') {
     (c as { body: StatementNode[] }).body = [];
   }
   return c;
@@ -451,6 +455,8 @@ export class CompilerStepEngine {
         return scan((t) => t.type === TokenType.for);
       case 'WhileStatement':
         return scan((t) => t.type === TokenType.while);
+      case 'DoWhileStatement':
+        return scan((t) => t.type === TokenType.do);
       case 'ExpressionStatement': {
         const root = expressionRootIdentifier(stmt.expression);
         if (root) {

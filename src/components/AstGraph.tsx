@@ -66,6 +66,7 @@ export function categoryOf(title: string): AstCategory {
     title === 'IfStatement' ||
     title === 'ForStatement' ||
     title === 'WhileStatement' ||
+    title === 'DoWhileStatement' ||
     title === 'PrintStatement' ||
     title === 'ReadStatement' ||
     title === 'ExpressionStatement' ||
@@ -89,6 +90,7 @@ const SHORT_LABELS: Record<string, string> = {
   IfStatement: 'If',
   ForStatement: 'For',
   WhileStatement: 'While',
+  DoWhileStatement: 'DoWhile',
   PrintStatement: 'Call',
   MethodCall: 'Call',
   ExpressionStatement: 'Expr',

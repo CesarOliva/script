@@ -63,6 +63,10 @@ export class Parser {
             return this.whileStatement();
         }
 
+        if (this.match(TokenType.do)) {
+            return this.doWhileStatement();
+        }
+
         if (this.match(TokenType.print)) {
             return this.printStatement();
         }
@@ -227,6 +231,22 @@ export class Parser {
             type: "WhileStatement",
             condition,
             body
+        }
+    }
+
+    // doWhileStatement ::= "do" "{" statementList "}" "while" "(" expression ")" ";"
+    private doWhileStatement(): AST.DoWhileStatementNode {
+        const body = this.block();
+        this.consume(TokenType.while, "Se esperaba 'while' tras el bloque 'do'");
+        this.consume(TokenType.leftParen, "Se esperaba '(' despues de 'while'");
+        const condition = this.expression();
+        this.consume(TokenType.rightParen, "Se esperaba ')' despues de la condición");
+        this.consume(TokenType.semicolon, "Se esperaba ';' al final del 'do-while'");
+
+        return {
+            type: "DoWhileStatement",
+            body,
+            condition
         }
     }
 

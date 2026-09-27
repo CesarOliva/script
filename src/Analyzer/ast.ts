@@ -11,6 +11,7 @@ export type StatementNode =
     | ConstantDeclarationNode
     | IfStatementNode 
     | ForStatementNode
+    | DoWhileStatementNode
     | WhileStatementNode
     | PrintStatementNode
     | ReadStatementNode
@@ -44,6 +45,12 @@ export interface ForStatementNode {
     condition?: ExpressionNode;
     update?: ExpressionNode | StatementNode;
     body: StatementNode[];
+}
+
+export interface DoWhileStatementNode {
+    type: "DoWhileStatement";
+    body: StatementNode[];
+    condition: ExpressionNode;
 }
 
 export interface WhileStatementNode {

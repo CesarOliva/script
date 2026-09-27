@@ -12,6 +12,7 @@ export enum TokenType{
     if = "if",
     else = "else",
     for = "for",
+    do = "do",
     while = "while",
 
     const = "const",
@@ -88,6 +89,7 @@ export class Lexer {
         ["if", TokenType.if],
         ["else", TokenType.else],
         ["for", TokenType.for],
+        ["do", TokenType.do],
         ["while", TokenType.while],
 
         ["const", TokenType.const],

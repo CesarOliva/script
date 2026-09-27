@@ -70,6 +70,7 @@ export const tokenTypeColors: Record<string, string> = {
     'if': 'bg-green-400/20 text-green-300',
     'else': 'bg-green-400/20 text-green-300',
     'for': 'bg-green-400/20 text-green-300',
+    'do': 'bg-green-400/20 text-green-300',
     'while': 'bg-green-400/20 text-green-300',
 
     'const': 'bg-teal-400/20 text-teal-300',
