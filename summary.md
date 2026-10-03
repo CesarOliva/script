@@ -1,13 +1,12 @@
-# PyScript — Resumen del Proyecto
+# TyScript — Resumen del Proyecto
 
-> Compilador académico de un lenguaje pequeño y estáticamente tipado hacia JavaScript, con playground web interactivo. Nombre del lenguaje aún provisional (`script` / PyScript como nombre del repo).
+> Compilador académico del lenguaje **TyScript**: un lenguaje pequeño y estáticamente tipado hacia JavaScript, con playground web interactivo.
 
 ## 1. Datos generales
 
 | Aspecto | Detalle |
 |---|---|
-| Ubicación | `C:\Users\Cesar\Desktop\Facu\PyScript` |
-| Nombre npm | `pyscript` v1.0.0, licencia ISC |
+| Nombre npm | `tyscript` v1.0.0, licencia ISC |
 | Lenguaje del compilador | TypeScript (estricto, `ES2020`) |
 | Frontend / Playground | React 19 + Vite 8 + Tailwind CSS 4 + D3 7 |
 | Entrada web | `index.html` → `src/main.tsx` → `src/App.tsx` |
@@ -58,7 +57,7 @@ Código fuente
 │   │   ├── examples.ts           # 5 programas preset: valido, errores, scope, arrays, stack+while
 │   │   └── tests.ts              # Harness npm test (3 casos)
 │   ├── components/
-│   │   ├── CodeEditor.tsx        # Editor estilo VSCode (gutter, highlight línea, tab=2 espacios, barra main.pys + status Ln/Col)
+ │   │   ├── CodeEditor.tsx        # Editor estilo VSCode (gutter, highlight línea, tab=2 espacios, barra main.tys + status Ln/Col)
 │   │   ├── Tabs.tsx              # Pestañas tokens/AST/semántico/símbolos, badges de colores por familia de token, banners de error de fase previa
 │   │   ├── AstExplorer.tsx       # Sección AST (header, leyenda categorías, expandir/colapsar, toggle JSON, dueño del estado colapso)
 │   │   ├── AstGraph.tsx          # Árbol D3 vertical (elbows + flechas, cards 168×58, zoom/pan, fullscreen, grid punteado, DX=184 DY=92)
@@ -82,9 +81,9 @@ Código fuente
 ## 5. Playground web (`src/App.tsx`)
 
 - Layout responsive: scroll normal en móvil; desde `md` bloqueado a `100vh` con scroll interno en editor y pestañas.
-- Header `PyScript | Playground` + badge de estado global (sin código / errores léxicos / sintáctico / semánticos / compilación correcta).
+- Header `TyScript | Playground` + badge de estado global (sin código / errores léxicos / sintáctico / semánticos / compilación correcta).
 - Barra de ejemplos (Válido, Errores semánticos, Scope, Arrays, Stack+while) + botón `🔬 Modo paso a paso`.
-- Editor con números de línea sincronizados, resaltado de línea activa (integrado con el step engine), archivo virtual (`valido.pys`, `errores.pys`, etc.).
+- Editor con números de línea sincronizados, resaltado de línea activa (integrado con el step engine), archivo virtual (`valido.tys`, `errores.tys`, etc.).
 - Pestañas: tokens (tabla con pills de colores por familia), AST (grafo D3 o JSON), semántico (lista errores), símbolos (tabla; solo banner si hubo errores previos).
 - Modo paso a paso: Anterior/Siguiente/Play/Pausa/Reset, progreso %, fase (`inicio/lexer/parser/semantico/fin/error`), línea actual resaltada en el editor.
 

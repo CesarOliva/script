@@ -1,10 +1,10 @@
-# [*TBD*] — Academic Compiler (TypeScript → JavaScript)
+# TyScript — Academic Compiler (TypeScript → JavaScript)
 
 An academic compiler written in **TypeScript** that compiles a small, statically-typed language to **JavaScript**.
 
 The goal of the project is to study and demonstrate the classic compiler phases: lexical analysis, syntax analysis, semantic analysis, intermediate representation (IR), optimization, and code generation.
 
-> Language name is still provisional (`script` is the repo / working name). Final language name is TBD — see `documentation/1-Especificacion_LenguajeDeProgramacion.md`.
+> Language name is **TyScript** — see `documentation/1-Especificacion_LenguajeDeProgramacion.md`.
 
 ## Example
 
@@ -56,7 +56,7 @@ program ArrayDemo {
 ## Repository structure
 
 ```text
-script/
+tyscript/
 ├── src/
 │   ├── Analyzer/
 │   │   ├── lexer.ts             # Lexical analyzer (scanner → Token[])
@@ -224,7 +224,7 @@ Source Code
   proof by cases (`Q1 → [S1] R2`, `¬Q1 → [S2] R2`, with a `modus ponens` explainer),
   truth tables (`Q1 -> R2`, `¬Q1 -> R2`, their disjunction as tautology) and the requested
   `Q1 Q2 R1->R2 R1 N -> R2` table read as implication vs. its complement (`R1 ∧ ¬R2`).
-- **Code editor (TO DO punto 6):** no change — already implemented (`src/components/CodeEditor.tsx`: VSCode-like gutter, active-line highlight, `Tab` = 2 spaces, `main.pys` tab bar + `Ln/Col` status bar).
+- **Code editor (TO DO punto 6):** no change — already implemented (`src/components/CodeEditor.tsx`: VSCode-like gutter, active-line highlight, `Tab` = 2 spaces,   `main.tys` tab bar + `Ln/Col` status bar).
 
 ### Implemented since the previous README update (2026-09-20 — Tailwind migration + 100vh layout + AST redesign)
 
@@ -296,7 +296,7 @@ Source Code
   highlight (`bg-white/[0.05]` + `border-y border-white/10`, 20 px row at
   `top = 12 + (line-1)*20 - scrollTop`), fixed mono metrics (13 px / 20 px leading,
   `wrap="off"`, `whiteSpace: pre`), Tab inserts two spaces, focus ring turns the
-  border blue, plus a tab bar (`main.pys` + traffic dots) and a status bar
+  border blue, plus a tab bar (`main.tys` + traffic dots) and a status bar
   (`Ln X, Col Y · N líneas · N carac. · UTF-8`). The global `textarea { ... }` rule
   was removed from `src/index.css` because unlayered element selectors override
   Tailwind utilities such as `bg-transparent`.

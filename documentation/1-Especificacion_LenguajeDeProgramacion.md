@@ -4,7 +4,7 @@
 **Estado:** Diseño inicial  
 **Implementación prevista:** TypeScript  
 **Destino de compilación:** JavaScript  
-**Nombre del lenguaje:** Por definir
+**Nombre del lenguaje:** TyScript
 
 ---
 
@@ -1461,7 +1461,7 @@ Las estructuras `stack<T>` y `queue<T>` representan una característica propia d
 
 Las siguientes decisiones quedan deliberadamente abiertas para una fase posterior:
 
-1. Nombre definitivo del lenguaje.
+1. Nombre definitivo del lenguaje: **TyScript** (decidido).
 2. Gramática formal completa.
 3. Reglas exactas de conversión entre `int` y `float`.
 4. Representación interna de arrays.

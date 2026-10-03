@@ -1,6 +1,6 @@
 # Especificación Léxica Formal
 
-**Lenguaje:** Por definir  
+**Lenguaje:** TyScript  
 **Versión:** 0.1  
 **Estado:** Diseño inicial  
 **Documento relacionado:** `lenguaje_programacion_especificacion_v0.1.md`  

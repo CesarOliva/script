@@ -3,7 +3,7 @@
 >
 > | Símbolo | Significado propuesto |
 > |---|---|
-> | `Q1`, `Q2` | Variables proposicionales = **condiciones** booleanas (ej. `Q1 := (i < n)`). En PyScript: expresión de tipo `bool` en `if` / `while` / `for`. |
+> | `Q1`, `Q2` | Variables proposicionales = **condiciones** booleanas (ej. `Q1 := (i < n)`). En TyScript: expresión de tipo `bool` en `if` / `while` / `for`. |
 > | `S1`, `S2` | **Bloques / sentencias** que se ejecutan (`[S1]`, `[S2]`). |
 > | `R1`, `R2` | **Resultados / estados** tras ejecutar (ej. `R2 := "programa continúa en Q2"`). |
 > | `N` | **Negación** (`Q1 N` = `¬Q1` = `!Q1`). |
@@ -28,7 +28,7 @@ flowchart TD
     S2 --> C
 ```
 
-Equivalente en PyScript:
+Equivalente en TyScript:
 
 ```text
 if (Q1) {

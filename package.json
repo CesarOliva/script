@@ -1,5 +1,6 @@
 {
-  "name": "pyscript",
+  "name": "TyScript",
+  "homepage": "https://github.com/CesarOliva/TyScript",
   "version": "1.0.0",
   "description": "",
   "main": "src/tests.ts",
@@ -7,7 +8,9 @@
     "test": "ts-node -P tsconfig.node.json src/Analyzer/tests.ts",
     "dev": "vite",
     "build": "tsc && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "predeploy": "npm run build",
+    "deploy": "gh-pages -d dist"
   },
   "keywords": [],
   "author": "",
@@ -31,6 +34,7 @@
     "create-require": "^1.1.1",
     "d3": "^7.9.0",
     "diff": "^4.0.4",
+    "gh-pages": "^6.3.0",
     "make-error": "^1.3.6",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",

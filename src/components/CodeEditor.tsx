@@ -15,7 +15,7 @@ export default function CodeEditor({
     value,
     onChange,
     placeholder = '',
-    fileName = 'main.pys',
+    fileName = 'main.tys',
     highlightedLine = null,
 }: CodeEditorProps) {
     const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -71,7 +71,7 @@ export default function CodeEditor({
                         {fileName}
                     </span>
                 </div>
-                <span className="font-mono text-[11px] text-[#5b6b84]">PyScript</span>
+                <span className="font-mono text-[11px] text-[#5b6b84]">TyScript</span>
             </div>
 
             <div className="flex min-h-0 flex-1">

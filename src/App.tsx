@@ -77,7 +77,7 @@ export default function App() {
     <div className="mx-auto w-full py-4 px-6 flex flex-col gap-4 min-h-screen md:h-screen md:min-h-0 md:max-h-screen md:overflow-hidden">
       <header className="flex flex-wrap justify-between items-center gap-3 shrink-0">
         <div className='flex items-center gap-4'>
-          <h1 className="text-[2rem] font-bold">PyScript</h1>
+          <h1 className="text-[2rem] font-bold">TyScript</h1>
           <div className="w-px h-8 bg-[#aeb9ca] "></div>
           <h3 className='text-md text-[#aeb9ca]'>Playground</h3>
         </div>
@@ -136,12 +136,12 @@ export default function App() {
             highlightedLine={stepMode ? stepLine : null}
             placeholder={'program Main {\n  print("Hola");\n}'}
             fileName={
-              source === codeExamples.valido ? 'valido.pys' : 
-              source === codeExamples.errores ? 'errores.pys' : 
-              source === codeExamples.scope ? 'scope.pys' : 
-              source === codeExamples.arrays ? 'arrays.pys' : 
-              source === codeExamples.stack ? 'stack.pys' : 
-              'main.pys'}
+              source === codeExamples.valido ? 'valido.tys' : 
+              source === codeExamples.errores ? 'errores.tys' : 
+              source === codeExamples.scope ? 'scope.tys' : 
+              source === codeExamples.arrays ? 'arrays.tys' : 
+              source === codeExamples.stack ? 'stack.tys' : 
+              'main.tys'}
           />
         </section>
 
